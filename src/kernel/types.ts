@@ -11,12 +11,13 @@ export interface CommandContext {
   args: string[];
   flags: Record<string, string | boolean>;
   cwd: string;
-  env: Env;
-  vfs: VFS;
+  env: import('./env').Env;
+  vfs: import('./vfs').VFS;
   stdin?: AsyncIterable<string>;
   signal: AbortSignal;
   ui: { skin: string; mode: 'dark' | 'light'; cols: number; rows: number };
   emit(chunk: string): void;
+  registry?: import('./registry').CommandRegistry;
 }
 
 export type OutputChunk = string;
@@ -27,12 +28,3 @@ export interface Command {
   usage?: string;
   run(ctx: CommandContext): AsyncIterable<OutputChunk>;
 }
-
-export interface ParsedCommand {
-  type: 'command';
-  command: string;
-  args: string[];
-}
-
-import { VFS } from './vfs';
-import { Env } from './env';

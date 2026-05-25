@@ -1,19 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { VFS } from '@/kernel/vfs';
 import { Env } from '@/kernel/env';
+import { CommandRegistry } from '@/kernel/registry';
 import { rmCommand } from '@/kernel/commands/rm';
-import { createContext } from '@/kernel/pipeline';
+import { buildContext } from '@/kernel/pipeline';
 
 describe('rm', () => {
+  const registry = new CommandRegistry();
+
   it('removes a file', async () => {
     const vfs = new VFS();
     vfs.write('/home/user/delete.me', 'bye', '/');
     const env = new Env();
     const chunks: string[] = [];
-    const ctx = createContext(['/home/user/delete.me'], '/', env, vfs, new AbortController().signal, (c) => chunks.push(c));
-    for await (const chunk of rmCommand.run(ctx)) {
-      chunks.push(chunk);
-    }
+    const ctx = buildContext(
+      { command: 'rm', args: ['/home/user/delete.me'] }, { commands: [], op: ';' },
+      '/', env, vfs, new AbortController().signal, registry, undefined,
+      (c: string) => chunks.push(c),
+    );
+    for await (const chunk of rmCommand.run(ctx)) chunks.push(chunk);
     expect(vfs.exists('/home/user/delete.me', '/')).toBe(false);
   });
 
@@ -21,10 +26,12 @@ describe('rm', () => {
     const vfs = new VFS();
     const env = new Env();
     const chunks: string[] = [];
-    const ctx = createContext(['/home/user'], '/', env, vfs, new AbortController().signal, (c) => chunks.push(c));
-    for await (const chunk of rmCommand.run(ctx)) {
-      chunks.push(chunk);
-    }
+    const ctx = buildContext(
+      { command: 'rm', args: ['/home/user'] }, { commands: [], op: ';' },
+      '/', env, vfs, new AbortController().signal, registry, undefined,
+      (c: string) => chunks.push(c),
+    );
+    for await (const chunk of rmCommand.run(ctx)) chunks.push(chunk);
     expect(chunks.join('')).toContain('Is a directory');
   });
 
@@ -32,10 +39,12 @@ describe('rm', () => {
     const vfs = new VFS();
     const env = new Env();
     const chunks: string[] = [];
-    const ctx = createContext(['/nonexistent'], '/', env, vfs, new AbortController().signal, (c) => chunks.push(c));
-    for await (const chunk of rmCommand.run(ctx)) {
-      chunks.push(chunk);
-    }
+    const ctx = buildContext(
+      { command: 'rm', args: ['/nonexistent'] }, { commands: [], op: ';' },
+      '/', env, vfs, new AbortController().signal, registry, undefined,
+      (c: string) => chunks.push(c),
+    );
+    for await (const chunk of rmCommand.run(ctx)) chunks.push(chunk);
     expect(chunks.join('')).toContain('No such file');
   });
 });

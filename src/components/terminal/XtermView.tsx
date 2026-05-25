@@ -6,6 +6,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { useMirageStore } from '@/store';
+import { complete } from '@/kernel/completer';
 import 'xterm/css/xterm.css';
 
 export function XtermView() {
@@ -14,10 +15,13 @@ export function XtermView() {
   const lineRef = useRef('');
   const currentAbortRef = useRef<AbortController | null>(null);
   const executingRef = useRef(false);
+  const tabCycleRef = useRef<{ matches: string[]; idx: number } | null>(null);
 
   const execute = useMirageStore((s) => s.execute);
   const addHistory = useMirageStore((s) => s.addHistory);
-  const navigateHistory = useMirageStore((s) => s.navigateHistory);
+  const vfs = useMirageStore((s) => s.vfs);
+  const registry = useMirageStore((s) => s.registry);
+  const getActiveSession = useMirageStore((s) => s.getActiveSession);
 
   const writeOutput = useCallback((term: Terminal, output: string) => {
     term.write(output.replace(/\n/g, '\r\n'));
@@ -44,6 +48,10 @@ export function XtermView() {
       executingRef.current = false;
     }
   }, [execute, addHistory, writeOutput]);
+
+  const getPrompt = useCallback(() => {
+    return '\r\x1b[1;32m$\x1b[0m ';
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -83,10 +91,10 @@ export function XtermView() {
     ro.observe(container);
 
     let line = '';
-    const prompt = '\r\x1b[1;32m$\x1b[0m ';
+    const prompt = getPrompt();
 
     term.onKey(({ key, domEvent }) => {
-      if (executingRef.current && domEvent.key === 'Escape') {
+      if (executingRef.current && (domEvent.key === 'Escape' || (domEvent.ctrlKey && domEvent.key === 'c'))) {
         currentAbortRef.current?.abort();
         currentAbortRef.current = null;
         executingRef.current = false;
@@ -99,6 +107,7 @@ export function XtermView() {
 
       if (domEvent.key === 'Enter') {
         if (executingRef.current) return;
+        tabCycleRef.current = null;
         const cmd = line.trim();
         line = '';
         lineRef.current = '';
@@ -109,6 +118,7 @@ export function XtermView() {
         term.write(prompt);
       } else if (domEvent.key === 'Backspace') {
         if (line.length > 0 && !executingRef.current) {
+          tabCycleRef.current = null;
           line = line.slice(0, -1);
           lineRef.current = line;
           term.write('\b \b');
@@ -117,14 +127,20 @@ export function XtermView() {
         term.clear();
         term.write(prompt + line);
       } else if (domEvent.key === 'ArrowUp') {
-        const prev = navigateHistory('back');
+        if (executingRef.current) return;
+        tabCycleRef.current = null;
+        const session = getActiveSession();
+        const prev = session.history.back();
         if (prev !== undefined) {
           term.write('\r\x1b[K' + prompt + prev);
           line = prev;
           lineRef.current = prev;
         }
       } else if (domEvent.key === 'ArrowDown') {
-        const next = navigateHistory('forward');
+        if (executingRef.current) return;
+        tabCycleRef.current = null;
+        const session = getActiveSession();
+        const next = session.history.forward();
         if (next !== undefined) {
           term.write('\r\x1b[K' + prompt + next);
           line = next;
@@ -136,7 +152,46 @@ export function XtermView() {
         }
       } else if (domEvent.key === 'Tab') {
         domEvent.preventDefault();
+        if (executingRef.current) return;
+
+        const isFirstWord = !line.includes(' ');
+        const partial = line.split(' ').pop() ?? '';
+
+        if (tabCycleRef.current) {
+          tabCycleRef.current.idx = (tabCycleRef.current.idx + 1) % tabCycleRef.current.matches.length;
+          const match = tabCycleRef.current.matches[tabCycleRef.current.idx]!;
+          const prefix = isFirstWord ? '' : line.slice(0, line.lastIndexOf(' ') + 1);
+          line = prefix + match;
+          lineRef.current = line;
+          term.write('\r\x1b[K' + prompt + line);
+          return;
+        }
+
+        const result = complete(partial, isFirstWord, registry, vfs, getActiveSession().cwd);
+
+        if (result.matches.length === 0) {
+          term.write('\x07'); // Bell
+        } else if (result.matches.length === 1) {
+          const prefix = isFirstWord ? '' : line.slice(0, line.lastIndexOf(' ') + 1);
+          line = prefix + result.matches[0]!;
+          lineRef.current = line;
+          term.write('\r\x1b[K' + prompt + line);
+        } else {
+          // Show candidates
+          const commonPrefix = findCommonPrefix(result.matches);
+          if (commonPrefix.length > partial.length) {
+            const prefix = isFirstWord ? '' : line.slice(0, line.lastIndexOf(' ') + 1);
+            line = prefix + commonPrefix;
+            lineRef.current = line;
+            term.write('\r\x1b[K' + prompt + line);
+          } else {
+            term.write('\r\n' + result.matches.join('  ') + '\r\n');
+            term.write(prompt + line);
+          }
+          tabCycleRef.current = { matches: result.matches, idx: -1 };
+        }
       } else if (domEvent.key.length === 1 && !executingRef.current) {
+        tabCycleRef.current = null;
         line += key;
         lineRef.current = line;
         term.write(key);
@@ -144,7 +199,7 @@ export function XtermView() {
     });
 
     term.attachCustomKeyEventHandler((e) => {
-      if (e.type === 'keydown' && e.key === 'Tab') {
+      if (e.type === 'keydown' && (e.key === 'Tab' || e.key === 'Escape')) {
         e.preventDefault();
         return false;
       }
@@ -162,7 +217,7 @@ export function XtermView() {
       term.dispose();
       terminalRef.current = null;
     };
-  }, [runCommand, navigateHistory]);
+  }, [runCommand, getPrompt, getActiveSession, registry, vfs]);
 
   return (
     <div
@@ -172,4 +227,16 @@ export function XtermView() {
       role="terminal"
     />
   );
+}
+
+function findCommonPrefix(strings: string[]): string {
+  if (strings.length === 0) return '';
+  let prefix = strings[0]!;
+  for (let i = 1; i < strings.length; i++) {
+    while (strings[i]!.indexOf(prefix) !== 0) {
+      prefix = prefix.slice(0, -1);
+      if (prefix === '') return '';
+    }
+  }
+  return prefix;
 }

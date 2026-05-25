@@ -1,40 +1,34 @@
 import { create } from 'zustand';
-import { VFS, Env, History, CommandRegistry, executeLine, setHelpRegistry, setHistorySource } from '@/kernel';
-import { lsCommand } from '@/kernel/commands/ls';
-import { cdCommand } from '@/kernel/commands/cd';
-import { pwdCommand } from '@/kernel/commands/pwd';
-import { catCommand } from '@/kernel/commands/cat';
-import { echoCommand } from '@/kernel/commands/echo';
-import { mkdirCommand } from '@/kernel/commands/mkdir';
-import { touchCommand } from '@/kernel/commands/touch';
-import { rmCommand } from '@/kernel/commands/rm';
-import { mvCommand } from '@/kernel/commands/mv';
-import { cpCommand } from '@/kernel/commands/cp';
-import { clearCommand } from '@/kernel/commands/clear';
-import { whoamiCommand } from '@/kernel/commands/whoami';
-import { helpCommand } from '@/kernel/commands/help';
-import { manCommand } from '@/kernel/commands/man';
-import { historyCommand } from '@/kernel/commands/history';
-import { aiCommand } from '@/kernel/ai/aiCommand';
+import { VFS, Env, History, CommandRegistry, executeLine } from '@/kernel';
+import { lsCommand, cdCommand, pwdCommand, catCommand, echoCommand, mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand, clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand, aiCommand, setHelpRegistry, setHistorySource } from '@/kernel';
+import { grepCommand } from '@/kernel/commands/grep';
+import { headCommand } from '@/kernel/commands/head';
+import { tailCommand } from '@/kernel/commands/tail';
+import { wcCommand } from '@/kernel/commands/wc';
+import { envCommand } from '@/kernel/commands/env';
+import { exportCmdCommand } from '@/kernel/commands/export-cmd';
+import { dateCommand } from '@/kernel/commands/date';
+import { calCommand } from '@/kernel/commands/cal';
+import { unameCommand } from '@/kernel/commands/uname';
+import { treeCommand } from '@/kernel/commands/tree';
+import { whichCommand } from '@/kernel/commands/which';
+import { dfCommand } from '@/kernel/commands/df';
+import { uptimeCommand } from '@/kernel/commands/uptime';
+import { psCommand } from '@/kernel/commands/ps';
+import { neofetchCommand } from '@/kernel/commands/neofetch';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
-  reg.register(lsCommand);
-  reg.register(cdCommand);
-  reg.register(pwdCommand);
-  reg.register(catCommand);
-  reg.register(echoCommand);
-  reg.register(mkdirCommand);
-  reg.register(touchCommand);
-  reg.register(rmCommand);
-  reg.register(mvCommand);
-  reg.register(cpCommand);
-  reg.register(clearCommand);
-  reg.register(whoamiCommand);
-  reg.register(helpCommand);
-  reg.register(manCommand);
-  reg.register(historyCommand);
-  reg.register(aiCommand);
+  const commands = [
+    lsCommand, cdCommand, pwdCommand, catCommand, echoCommand,
+    mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand,
+    clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand,
+    aiCommand, grepCommand, headCommand, tailCommand, wcCommand,
+    envCommand, exportCmdCommand, dateCommand, calCommand, unameCommand,
+    treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
+    neofetchCommand,
+  ];
+  for (const cmd of commands) reg.register(cmd);
   setHelpRegistry(reg);
   return reg;
 }
@@ -88,13 +82,11 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   setHydrated: (v) => set({ _hydrated: v }),
 
   getActiveSession: () => {
-    const state = get();
-    return state.sessions[state.activeSessionId]!;
+    return get().sessions[get().activeSessionId]!;
   },
 
   getHistoryItems: () => {
-    const session = get().getActiveSession();
-    return session.history.getAll();
+    return get().getActiveSession().history.getAll();
   },
 
   addHistory: (line) => {
@@ -110,25 +102,18 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   },
 
   resetHistoryIndex: () => {
-    const session = get().getActiveSession();
-    session.history.resetIndex();
+    get().getActiveSession().history.resetIndex();
   },
 
   execute: async (line) => {
     const state = get();
     const session = state.sessions[state.activeSessionId]!;
-    const abortController = new AbortController();
 
     const result = await executeLine(
       line,
-      {
-        vfs: state.vfs,
-        env: session.env,
-        registry: state.registry,
-        history: session.history.getAll(),
-      },
+      { vfs: state.vfs, env: session.env, registry: state.registry, history: session.history.getAll() },
       session.cwd,
-      abortController.signal,
+      new AbortController().signal,
     );
 
     if (result.newCwd !== session.cwd) {
