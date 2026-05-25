@@ -13,22 +13,37 @@ export interface ExecResult {
   cwd: string;
 }
 
-function parseFlags(args: string[]): Record<string, string | boolean> {
+function parseFlags(args: string[]): { flags: Record<string, string | boolean>; rest: string[] } {
   const flags: Record<string, string | boolean> = {};
-  for (const arg of args) {
+  const rest: string[] = [];
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i]!;
+    if (arg === '--') { i++; break; }
     if (arg.startsWith('--')) {
       const eqIdx = arg.indexOf('=');
       if (eqIdx > 0) {
         flags[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
-      } else if (arg === '--') break;
-      else flags[arg.slice(2)] = true;
-    } else if (arg.startsWith('-') && arg.length > 1 && arg[0] === '-') {
-      for (let i = 1; i < arg.length; i++) {
-        flags[arg[i]!] = true;
+      } else if (i + 1 < args.length && !args[i + 1]!.startsWith('-')) {
+        flags[arg.slice(2)] = args[++i]!;
+      } else {
+        flags[arg.slice(2)] = true;
       }
+    } else if (arg.startsWith('-') && arg.length > 1) {
+      const ch = arg[1]!;
+      if (arg.length === 2 && i + 1 < args.length && !args[i + 1]!.startsWith('-')) {
+        flags[ch] = args[++i]!;
+      } else {
+        flags[ch] = arg.length === 2 ? true : arg.slice(2);
+      }
+    } else {
+      rest.push(arg);
     }
+    i++;
   }
-  return flags;
+  // Collect remaining after --
+  while (i < args.length) rest.push(args[i++]!);
+  return { flags, rest };
 }
 
 function expandArgs(args: string[], env: Env, vfs: VFS, cwd: string): string[] {
@@ -53,8 +68,7 @@ export function buildContext(
   emit?: (chunk: string) => void,
   extra?: Partial<Pick<CommandContext, 'state' | 'chatModel' | 'chatPersona' | 'byokKey'>>,
 ): CommandContext {
-  const flags = parseFlags(cmd.args);
-  const positional = cmd.args.filter((a) => !a.startsWith('-') || a === '--');
+  const { flags, rest: positional } = parseFlags(cmd.args);
   const expanded = expandArgs(positional, env, vfs, cwd);
 
   return {
@@ -173,10 +187,32 @@ async function executeSequence(
     const isLast = i === seq.commands.length - 1;
     const hasPipeToNext = !isLast;
     const hasRedirect = cmd.redirect !== undefined;
+    const hasInputRedirect = cmd.inputRedirect !== undefined;
 
     let stdin: AsyncIterable<string> | undefined;
     if (i > 0 && lastStdin) {
       stdin = lastStdin;
+    }
+
+    if (hasInputRedirect) {
+      const target = cmd.inputRedirect!;
+      const resolved = kernel.vfs.resolve(target.file, currentCwd);
+      const content = kernel.vfs.read(resolved, '/') ?? '';
+      const lines = content.split('\n');
+      let idx = 0;
+      stdin = {
+        [Symbol.asyncIterator]() {
+          return {
+            next: () => {
+              if (idx < lines.length) {
+                const val = idx < lines.length - 1 ? lines[idx++]! + '\n' : lines[idx++]!;
+                return Promise.resolve({ value: val, done: false });
+              }
+              return Promise.resolve({ value: undefined as unknown as string, done: true });
+            },
+          };
+        },
+      };
     }
 
     let pipeBuffer: string[] = [];

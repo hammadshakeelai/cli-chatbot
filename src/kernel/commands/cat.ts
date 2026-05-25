@@ -6,6 +6,12 @@ export const catCommand: Command = {
   usage: 'cat <file> [file...]',
   async *run(ctx: CommandContext): AsyncIterable<OutputChunk> {
     if (ctx.args.length === 0) {
+      if (ctx.stdin) {
+        for await (const chunk of ctx.stdin) {
+          yield chunk;
+        }
+        return;
+      }
       yield 'cat: missing operand\n';
       return;
     }

@@ -14,7 +14,7 @@ import { headCommand } from '@/kernel/commands/head';
 import { tailCommand } from '@/kernel/commands/tail';
 import { wcCommand } from '@/kernel/commands/wc';
 import { envCommand } from '@/kernel/commands/env';
-import { exportCmdCommand } from '@/kernel/commands/export-cmd';
+import { exportCommand } from '@/kernel/commands/export-cmd';
 import { dateCommand } from '@/kernel/commands/date';
 import { calCommand } from '@/kernel/commands/cal';
 import { unameCommand } from '@/kernel/commands/uname';
@@ -47,12 +47,12 @@ function createRegistry(): CommandRegistry {
     mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand,
     clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand,
     aiCommand, grepCommand, headCommand, tailCommand, wcCommand,
-    envCommand, exportCmdCommand, dateCommand, calCommand, unameCommand,
+    envCommand, exportCommand, dateCommand, calCommand, unameCommand,
     treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
     neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
     fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
     modelCommand, uiCommand, dayCommand, nightCommand, fxCommand,
-    settingsCommand, shareThemeCommand, soundCommand,
+    settingsCommand, shareThemeCommand, soundCommand, exportCommand,
     { ...aiCommand, name: 'ask' }, // alias for ai
   ];
   for (const cmd of commands) reg.register(cmd);

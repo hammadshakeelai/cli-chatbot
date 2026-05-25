@@ -27,7 +27,7 @@ export { headCommand } from './commands/head';
 export { tailCommand } from './commands/tail';
 export { wcCommand } from './commands/wc';
 export { envCommand } from './commands/env';
-export { exportCmdCommand } from './commands/export-cmd';
+export { exportCommand } from './commands/export-cmd';
 export { dateCommand } from './commands/date';
 export { calCommand } from './commands/cal';
 export { unameCommand } from './commands/uname';

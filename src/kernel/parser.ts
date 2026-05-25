@@ -1,9 +1,11 @@
 export type RedirectOp = '>' | '>>';
+export type InputRedirectOp = '<';
 
 export interface PipelineCmd {
   command: string;
   args: string[];
   redirect?: { op: RedirectOp; file: string };
+  inputRedirect?: { op: InputRedirectOp; file: string };
 }
 
 export type SequenceOp = '&&' | ';';
@@ -51,13 +53,24 @@ function buildPipelines(tokens: string[]): PipelineCmd[] {
   const cmds: PipelineCmd[] = [];
   const currentArgs: string[] = [];
   let redirect: PipelineCmd['redirect'] | null = null;
+  let inputRedirect: PipelineCmd['inputRedirect'] | null = null;
 
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i]!;
 
     if (tok === '|') {
-      flushCmd(currentArgs, cmds, redirect);
+      flushCmd(currentArgs, cmds, redirect, inputRedirect);
       redirect = null;
+      inputRedirect = null;
+      continue;
+    }
+
+    if (tok === '<') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        inputRedirect = { op: tok, file: next };
+        i++;
+      }
       continue;
     }
 
@@ -73,7 +86,7 @@ function buildPipelines(tokens: string[]): PipelineCmd[] {
     currentArgs.push(tok);
   }
 
-  flushCmd(currentArgs, cmds, redirect);
+  flushCmd(currentArgs, cmds, redirect, inputRedirect);
   return cmds;
 }
 
@@ -81,12 +94,14 @@ function flushCmd(
   args: string[],
   cmds: PipelineCmd[],
   redirect: PipelineCmd['redirect'] | null,
+  inputRedirect: PipelineCmd['inputRedirect'] | null,
 ): void {
   if (args.length === 0) return;
   cmds.push({
     command: args[0]!,
     args: args.slice(1),
     redirect: redirect ?? undefined,
+    inputRedirect: inputRedirect ?? undefined,
   });
   args.length = 0;
 }
@@ -122,6 +137,7 @@ function tokenize(input: string): string[] {
       } else { tokens.push('&'); }
       continue;
     }
+    if (ch === '<') { flushToken(current, tokens); current = ''; tokens.push('<'); continue; }
     if (ch === '>') {
       flushToken(current, tokens); current = '';
       if (i + 1 < input.length && input[i + 1] === '>') {

@@ -9,6 +9,7 @@ import { synthwaveSkin } from './synthwave';
 import { dosSkin } from './dos';
 import { hackerSkin } from './hacker';
 import { highContrastSkin } from './high-contrast';
+import { openclawSkin } from './openclaw';
 
 export function registerAllSkins(): void {
   registerSkin(claudeCodeSkin);
@@ -21,10 +22,11 @@ export function registerAllSkins(): void {
   registerSkin(dosSkin);
   registerSkin(hackerSkin);
   registerSkin(highContrastSkin);
+  registerSkin(openclawSkin);
 }
 
 export {
   claudeCodeSkin, opencodeSkin, classicGreenSkin, matrixSkin,
   draculaSkin, amberCrtSkin, synthwaveSkin, dosSkin, hackerSkin,
-  highContrastSkin,
+  highContrastSkin, openclawSkin,
 };
