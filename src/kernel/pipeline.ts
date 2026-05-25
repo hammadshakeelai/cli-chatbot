@@ -51,6 +51,7 @@ export function buildContext(
   registry: CommandRegistry,
   stdin?: AsyncIterable<string>,
   emit?: (chunk: string) => void,
+  extra?: Partial<Pick<CommandContext, 'state' | 'chatModel' | 'chatPersona' | 'byokKey'>>,
 ): CommandContext {
   const flags = parseFlags(cmd.args);
   const positional = cmd.args.filter((a) => !a.startsWith('-') || a === '--');
@@ -67,28 +68,41 @@ export function buildContext(
     ui: { skin: 'default', mode: 'dark', cols: 80, rows: 24, reducedMotion: false },
     emit: emit ?? (() => {}),
     registry,
+    state: extra?.state ?? { chatMessages: [] },
+    ...extra,
   };
 }
 
 export async function executeLine(
   line: string,
-  kernel: { vfs: VFS; env: Env; registry: CommandRegistry; history: string[] },
+  kernel: {
+    vfs: VFS;
+    env: Env;
+    registry: CommandRegistry;
+    history: string[];
+    chatModel?: string;
+    chatPersona?: string;
+    byokKey?: string;
+    _state?: import('./types').MutableState;
+  },
   currentCwd: string,
   signal: AbortSignal,
   onOutput?: (chunk: string) => void,
-): Promise<{ output: string; newCwd: string }> {
+  onFallthrough?: (cmd: string, args: string[]) => Promise<string | false | undefined>,
+): Promise<{ output: string; newCwd: string; state?: import('./types').MutableState }> {
   let output = '';
   let newCwd = currentCwd;
+  const state = kernel._state ?? { chatMessages: [] } as import('./types').MutableState;
 
   const sequences = parse(line);
-  if (sequences.length === 0) return { output, newCwd };
+  if (sequences.length === 0) return { output, newCwd, state };
 
   let lastExitCode = 0;
   for (let i = 0; i < sequences.length; i++) {
     const seq = sequences[i]!;
     if (i > 0 && seq.op === '&&' && lastExitCode !== 0) break;
 
-    const result = await executeSequence(seq, kernel, newCwd, signal, onOutput);
+    const result = await executeSequence(seq, kernel, newCwd, signal, onOutput, i, state, onFallthrough);
     output += result.output;
     if (result.newCwd !== newCwd) {
       newCwd = result.newCwd;
@@ -96,15 +110,26 @@ export async function executeLine(
     lastExitCode = result.exitCode;
   }
 
-  return { output, newCwd };
+  return { output, newCwd, state };
 }
 
 async function executeSequence(
   seq: SequenceStep,
-  kernel: { vfs: VFS; env: Env; registry: CommandRegistry; history: string[] },
+  kernel: {
+    vfs: VFS;
+    env: Env;
+    registry: CommandRegistry;
+    history: string[];
+    chatModel?: string;
+    chatPersona?: string;
+    byokKey?: string;
+  },
   cwd: string,
   signal: AbortSignal,
   onOutput?: (chunk: string) => void,
+  _seqIndex?: number,
+  _state?: import('./types').MutableState,
+  onFallthrough?: (cmd: string, args: string[]) => Promise<string | false | undefined>,
 ): Promise<{ output: string; newCwd: string; exitCode: number }> {
   let output = '';
   let currentCwd = cwd;
@@ -116,6 +141,14 @@ async function executeSequence(
     const cmdDef = kernel.registry.get(cmd.command);
 
     if (!cmdDef) {
+      if (onFallthrough) {
+        const cmdArgs = cmd.args.filter((a) => !a.startsWith('-'));
+        const fallthroughResult = await onFallthrough(cmd.command, cmdArgs);
+        if (fallthroughResult !== undefined && fallthroughResult !== false) {
+          output += fallthroughResult;
+          continue;
+        }
+      }
       output += `command not found: ${cmd.command}\n`;
       exitCode = 1;
       continue;
@@ -125,9 +158,16 @@ async function executeSequence(
     const emit = (chunk: string) => {
       if (chunk.startsWith('__cd__')) {
         currentCwd = chunk.slice(6);
+      } else if (chunk.startsWith('__chat_')) {
+        // handled by store
       } else {
         chunks.push(chunk);
       }
+    };
+
+    const streamEmit = (chunk: string) => {
+      emit(chunk);
+      if (!chunk.startsWith('__chat_')) onOutput?.(chunk);
     };
 
     const isLast = i === seq.commands.length - 1;
@@ -154,12 +194,12 @@ async function executeSequence(
       },
     };
 
-    const streamEmit = (chunk: string) => {
-      emit(chunk);
-      onOutput?.(chunk);
-    };
-
-    const ctx = buildContext(cmd, seq, currentCwd, kernel.env, kernel.vfs, signal, kernel.registry, stdin, streamEmit);
+    const ctx = buildContext(cmd, seq, currentCwd, kernel.env, kernel.vfs, signal, kernel.registry, stdin, streamEmit, {
+      state: _state,
+      chatModel: kernel.chatModel,
+      chatPersona: kernel.chatPersona,
+      byokKey: kernel.byokKey,
+    });
 
     try {
       for await (const chunk of cmdDef.run(ctx)) {

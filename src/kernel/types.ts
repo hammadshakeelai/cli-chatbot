@@ -7,6 +7,12 @@ export interface VFSNode {
   mtime: number;
 }
 
+export interface MutableState {
+  chatMessages: import('@/providers/types').ChatMsg[];
+  chatModel?: string;
+  chatPersona?: string;
+}
+
 export interface CommandContext {
   args: string[];
   flags: Record<string, string | boolean>;
@@ -18,6 +24,11 @@ export interface CommandContext {
   ui: { skin: string; mode: 'dark' | 'light'; cols: number; rows: number; reducedMotion: boolean };
   emit(chunk: string): void;
   registry?: import('./registry').CommandRegistry;
+  // Mutable state shared between kernel and store
+  state: MutableState;
+  chatModel?: string;
+  chatPersona?: string;
+  byokKey?: string;
 }
 
 export type OutputChunk = string;

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { VFS, Env, History, CommandRegistry, executeLine } from '@/kernel';
+import type { ChatMsg } from '@/providers/types';
 import { lsCommand, cdCommand, pwdCommand, catCommand, echoCommand, mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand, clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand, aiCommand, setHelpRegistry, setHistorySource } from '@/kernel';
 import { grepCommand } from '@/kernel/commands/grep';
 import { headCommand } from '@/kernel/commands/head';
@@ -25,6 +26,7 @@ import { cmatrixCommand } from '@/kernel/commands/cmatrix-cmd';
 import { hollywoodCommand } from '@/kernel/commands/hollywood-cmd';
 import { slCommand } from '@/kernel/commands/sl-cmd';
 import { nyancatCommand } from '@/kernel/commands/nyancat-cmd';
+import { modelCommand } from '@/kernel/commands/model-cmd';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
@@ -37,16 +39,26 @@ function createRegistry(): CommandRegistry {
     treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
     neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
     fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
+    modelCommand,
+    { ...aiCommand, name: 'ask' }, // alias for ai
   ];
   for (const cmd of commands) reg.register(cmd);
   setHelpRegistry(reg);
   return reg;
 }
 
+interface ChatState {
+  chatMessages: ChatMsg[];
+  model: string;
+  persona: string;
+  byokKey: string;
+}
+
 interface Session {
   cwd: string;
   env: Env;
   history: History;
+  chat: ChatState;
 }
 
 interface MirageState {
@@ -64,6 +76,8 @@ interface MirageState {
   addHistory: (line: string) => void;
   navigateHistory: (dir: 'back' | 'forward') => string | undefined;
   resetHistoryIndex: () => void;
+  getChatState: () => ChatState;
+  setChatMessages: (messages: ChatMsg[]) => void;
 }
 
 const DEFAULT_SESSION_ID = 'default';
@@ -76,6 +90,12 @@ const sessions: Record<string, Session> = {
     cwd: '/home/user',
     env: new Env(),
     history: new History(),
+    chat: {
+      chatMessages: [],
+      model: 'gemini-2.0-flash',
+      persona: 'You are Mirage, a warm, witty retro-terminal AI companion. Keep replies terminal-friendly. Be concise.',
+      byokKey: '',
+    },
   },
 };
 
@@ -119,18 +139,98 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     const state = get();
     const session = state.sessions[state.activeSessionId]!;
 
+    // Fallthrough: unknown commands sent to AI
+    const onFallthrough = async (cmd: string, args: string[]): Promise<string | false | undefined> => {
+      // Don't fallthrough for built-in commands that happen to not be found
+      // Only fallthrough when it looks like natural language
+      const text = [cmd, ...args].join(' ');
+      if (text.length > 200) return false;
+
+      try {
+        const messages = [...session.chat.chatMessages, { role: 'user' as const, content: text }];
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages,
+            model: session.chat.model,
+            persona: session.chat.persona,
+            key: session.chat.byokKey || undefined,
+          }),
+          signal: signal ?? new AbortController().signal,
+        });
+        if (!res.ok) return false;
+
+        const reader = res.body?.getReader();
+        if (!reader) return false;
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let resultText = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6);
+            if (!data) continue;
+            try {
+              const delta = JSON.parse(data);
+              if (delta.type === 'delta') resultText += delta.text;
+              if (delta.type === 'done') break;
+            } catch { /* skip */ }
+          }
+        }
+
+        // Store the AI response in chat
+        session.chat.chatMessages.push({ role: 'user', content: text });
+        session.chat.chatMessages.push({ role: 'assistant', content: resultText });
+
+        return resultText + '\n';
+      } catch {
+        return false;
+      }
+    };
+
     const result = await executeLine(
       line,
-      { vfs: state.vfs, env: session.env, registry: state.registry, history: session.history.getAll() },
+      {
+        vfs: state.vfs,
+        env: session.env,
+        registry: state.registry,
+        history: session.history.getAll(),
+        chatModel: session.chat.model,
+        chatPersona: session.chat.persona,
+        byokKey: session.chat.byokKey || undefined,
+        _state: session.chat,
+      },
       session.cwd,
       signal ?? new AbortController().signal,
       onOutput,
+      onFallthrough,
     );
 
     if (result.newCwd !== session.cwd) {
       session.cwd = result.newCwd;
     }
 
-    return result;
+    // Update chat messages from mutable state
+    if (result.state) {
+      session.chat.chatMessages = result.state.chatMessages;
+      if (result.state.chatModel) session.chat.model = result.state.chatModel;
+      if (result.state.chatPersona) session.chat.persona = result.state.chatPersona;
+    }
+
+    return { output: result.output, newCwd: result.newCwd };
+  },
+  getChatState: () => get().sessions[get().activeSessionId]!.chat,
+  setChatMessages: (chatMessages) => {
+    const state = get();
+    const session = state.sessions[state.activeSessionId]!;
+    session.chat.chatMessages = chatMessages;
   },
 }));
