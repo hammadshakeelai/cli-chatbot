@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { CrtOverlay } from '@/themes/fx/CrtOverlay';
 
 export const metadata: Metadata = {
   title: 'Mirage — virtual terminal',
@@ -28,7 +29,10 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: INLINE_THEME_SCRIPT }} />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <CrtOverlay />
+      </body>
     </html>
   );
 }

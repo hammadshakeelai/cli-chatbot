@@ -36,6 +36,7 @@ import { nyancatCommand } from '@/kernel/commands/nyancat-cmd';
 import { modelCommand } from '@/kernel/commands/model-cmd';
 import { uiCommand } from '@/kernel/commands/ui-cmd';
 import { dayCommand, nightCommand } from '@/kernel/commands/day-cmd';
+import { fxCommand } from '@/kernel/commands/fx-cmd';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
@@ -48,7 +49,7 @@ function createRegistry(): CommandRegistry {
     treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
     neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
     fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
-    modelCommand, uiCommand, dayCommand, nightCommand,
+    modelCommand, uiCommand, dayCommand, nightCommand, fxCommand,
     { ...aiCommand, name: 'ask' }, // alias for ai
   ];
   for (const cmd of commands) reg.register(cmd);
@@ -85,6 +86,7 @@ interface MirageState {
   _hydrated: boolean;
   skin: ThemeSkin;
   mode: 'dark' | 'light';
+  fxEnabled: boolean;
 
   setHydrated: (v: boolean) => void;
   execute: (line: string, signal?: AbortSignal, onOutput?: (chunk: string) => void) => Promise<{ output: string; newCwd: string }>;
@@ -98,6 +100,7 @@ interface MirageState {
   setSkin: (id: string) => void;
   setMode: (mode: 'dark' | 'light') => void;
   toggleMode: () => void;
+  setFxEnabled: (v: boolean) => void;
   // Tab management
   createSession: () => string;
   closeSession: (id: string) => void;
@@ -159,6 +162,7 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   _hydrated: false,
   skin: initSkin(),
   mode: initMode(),
+  fxEnabled: true,
 
   setHydrated: (v) => set({ _hydrated: v }),
 
@@ -284,6 +288,8 @@ export const useMirageStore = create<MirageState>((set, get) => ({
       const skinId = trimmed.slice(3).trim();
       if (skinId && skinId !== 'list') get().setSkin(skinId);
     }
+    else if (trimmed === 'fx on') get().setFxEnabled(true);
+    else if (trimmed === 'fx off') get().setFxEnabled(false);
 
     // Auto-save
     get()._saveState().catch(() => {});
@@ -315,6 +321,7 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     const newMode = state.mode === 'dark' ? 'light' : 'dark';
     state.setMode(newMode);
   },
+  setFxEnabled: (v) => set({ fxEnabled: v }),
 
   // Persistence
   _saveState: async () => {
