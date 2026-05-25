@@ -6,13 +6,28 @@ export const metadata: Metadata = {
   description: 'A browser-based virtual Linux terminal + AI companion',
 };
 
+const INLINE_THEME_SCRIPT = `
+(function(){
+  try {
+    var skin = localStorage.getItem('mirage-skin') || 'claude-code';
+    var mode = localStorage.getItem('mirage-mode') || 
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-skin', skin);
+    document.documentElement.setAttribute('data-mode', mode);
+  } catch(e){}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: INLINE_THEME_SCRIPT }} />
+      </head>
       <body className="antialiased">{children}</body>
     </html>
   );

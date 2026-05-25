@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { VFS, Env, History, CommandRegistry, executeLine } from '@/kernel';
 import type { ChatMsg } from '@/providers/types';
+import { registerAllSkins, claudeCodeSkin } from '@/themes/manifests';
+import { applyTheme, getSkin } from '@/themes/registry';
+import type { ThemeSkin } from '@/themes/registry';
+
+registerAllSkins();
 import { lsCommand, cdCommand, pwdCommand, catCommand, echoCommand, mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand, clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand, aiCommand, setHelpRegistry, setHistorySource } from '@/kernel';
 import { grepCommand } from '@/kernel/commands/grep';
 import { headCommand } from '@/kernel/commands/head';
@@ -27,6 +32,8 @@ import { hollywoodCommand } from '@/kernel/commands/hollywood-cmd';
 import { slCommand } from '@/kernel/commands/sl-cmd';
 import { nyancatCommand } from '@/kernel/commands/nyancat-cmd';
 import { modelCommand } from '@/kernel/commands/model-cmd';
+import { uiCommand } from '@/kernel/commands/ui-cmd';
+import { dayCommand, nightCommand } from '@/kernel/commands/day-cmd';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
@@ -39,7 +46,7 @@ function createRegistry(): CommandRegistry {
     treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
     neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
     fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
-    modelCommand,
+    modelCommand, uiCommand, dayCommand, nightCommand,
     { ...aiCommand, name: 'ask' }, // alias for ai
   ];
   for (const cmd of commands) reg.register(cmd);
@@ -68,6 +75,8 @@ interface MirageState {
   sessions: Record<string, Session>;
   activeSessionId: string;
   _hydrated: boolean;
+  skin: ThemeSkin;
+  mode: 'dark' | 'light';
 
   setHydrated: (v: boolean) => void;
   execute: (line: string, signal?: AbortSignal, onOutput?: (chunk: string) => void) => Promise<{ output: string; newCwd: string }>;
@@ -78,6 +87,9 @@ interface MirageState {
   resetHistoryIndex: () => void;
   getChatState: () => ChatState;
   setChatMessages: (messages: ChatMsg[]) => void;
+  setSkin: (id: string) => void;
+  setMode: (mode: 'dark' | 'light') => void;
+  toggleMode: () => void;
 }
 
 const DEFAULT_SESSION_ID = 'default';
@@ -101,6 +113,20 @@ const sessions: Record<string, Session> = {
 
 setHistorySource(sessions[DEFAULT_SESSION_ID]!.history.getAll());
 
+function initMode(): 'dark' | 'light' {
+  if (typeof window === 'undefined') return 'dark';
+  const stored = localStorage.getItem('mirage-mode');
+  if (stored === 'dark' || stored === 'light') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function initSkin(): ThemeSkin {
+  if (typeof window === 'undefined') return claudeCodeSkin;
+  const stored = localStorage.getItem('mirage-skin');
+  if (stored) return getSkin(stored) ?? claudeCodeSkin;
+  return claudeCodeSkin;
+}
+
 export const useMirageStore = create<MirageState>((set, get) => ({
   version: '0.1.0',
   vfs,
@@ -108,6 +134,8 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   sessions,
   activeSessionId: DEFAULT_SESSION_ID,
   _hydrated: false,
+  skin: initSkin(),
+  mode: initMode(),
 
   setHydrated: (v) => set({ _hydrated: v }),
 
@@ -225,6 +253,15 @@ export const useMirageStore = create<MirageState>((set, get) => ({
       if (result.state.chatPersona) session.chat.persona = result.state.chatPersona;
     }
 
+    // Handle theme commands post-execution
+    const trimmed = line.trim();
+    if (trimmed === 'day') get().setMode('light');
+    else if (trimmed === 'night') get().setMode('dark');
+    else if (trimmed.startsWith('ui ')) {
+      const skinId = trimmed.slice(3).trim();
+      if (skinId && skinId !== 'list') get().setSkin(skinId);
+    }
+
     return { output: result.output, newCwd: result.newCwd };
   },
   getChatState: () => get().sessions[get().activeSessionId]!.chat,
@@ -232,5 +269,22 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     const state = get();
     const session = state.sessions[state.activeSessionId]!;
     session.chat.chatMessages = chatMessages;
+  },
+  setSkin: (id) => {
+    const skin = getSkin(id);
+    if (!skin) return;
+    set({ skin });
+    const state = get();
+    applyTheme(skin, state.mode);
+  },
+  setMode: (mode) => {
+    set({ mode });
+    const state = get();
+    applyTheme(state.skin, mode);
+  },
+  toggleMode: () => {
+    const state = get();
+    const newMode = state.mode === 'dark' ? 'light' : 'dark';
+    state.setMode(newMode);
   },
 }));

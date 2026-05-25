@@ -9,7 +9,7 @@ const XtermView = dynamic(
 
 export default function Home() {
   return (
-    <main className="h-dvh w-dvw overflow-hidden bg-black">
+    <main className="h-dvh w-dvw overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <XtermView />
     </main>
   );

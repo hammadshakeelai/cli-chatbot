@@ -7,6 +7,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { useMirageStore } from '@/store';
 import { complete } from '@/kernel/completer';
+import { applyTheme } from '@/themes/registry';
 import 'xterm/css/xterm.css';
 
 export function XtermView() {
@@ -22,6 +23,8 @@ export function XtermView() {
   const vfs = useMirageStore((s) => s.vfs);
   const registry = useMirageStore((s) => s.registry);
   const getActiveSession = useMirageStore((s) => s.getActiveSession);
+  const skin = useMirageStore((s) => s.skin);
+  const mode = useMirageStore((s) => s.mode);
 
   const writeOutput = useCallback((term: Terminal, output: string) => {
     term.write(output.replace(/\n/g, '\r\n'));
@@ -62,17 +65,15 @@ export function XtermView() {
     const container = containerRef.current;
     if (!container) return;
 
+    // Apply current theme to DOM
+    applyTheme(skin, mode);
+
     const term = new Terminal({
-      cursorBlink: true,
+      cursorBlink: false,
       cursorStyle: 'block',
       fontSize: 14,
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
-      theme: {
-        background: '#000000',
-        foreground: '#e0e0e0',
-        cursor: '#e0e0e0',
-        selectionBackground: '#444444',
-      },
+      fontFamily: skin.fonts.mono,
+      theme: mode === 'dark' ? skin.xtermTheme.dark : skin.xtermTheme.light,
       allowTransparency: false,
     });
 
@@ -222,15 +223,30 @@ export function XtermView() {
       term.dispose();
       terminalRef.current = null;
     };
-  }, [runCommand, getPrompt, getActiveSession, registry, vfs]);
+  }, [runCommand, getPrompt, getActiveSession, registry, vfs, skin, mode]);
+
+  // Re-apply theme on skin/mode change
+  useEffect(() => {
+    const term = terminalRef.current;
+    if (!term) return;
+    applyTheme(skin, mode, term);
+  }, [skin, mode]);
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      aria-label="Mirage terminal"
-      role="terminal"
-    />
+    <div className="flex h-full w-full flex-col">
+      <div className="terminal-chrome flex-1 overflow-hidden">
+        <div
+          ref={containerRef}
+          className="h-full w-full"
+          aria-label="Mirage terminal"
+          role="terminal"
+        />
+      </div>
+      <div className="status-bar">
+        <span>Esc to interrupt</span>
+        <span>{skin.label} · {mode}</span>
+      </div>
+    </div>
   );
 }
 
