@@ -4,6 +4,8 @@ import type { ChatMsg } from '@/providers/types';
 import { registerAllSkins, claudeCodeSkin } from '@/themes/manifests';
 import { applyTheme, getSkin } from '@/themes/registry';
 import type { ThemeSkin } from '@/themes/registry';
+import { saveToIndexedDB, loadFromIndexedDB } from '@/lib/persistence';
+import type { PersistedData } from '@/lib/persistence';
 
 registerAllSkins();
 import { lsCommand, cdCommand, pwdCommand, catCommand, echoCommand, mkdirCommand, touchCommand, rmCommand, mvCommand, cpCommand, clearCommand, whoamiCommand, helpCommand, manCommand, historyCommand, aiCommand, setHelpRegistry, setHistorySource } from '@/kernel';
@@ -61,6 +63,11 @@ interface ChatState {
   byokKey: string;
 }
 
+interface SessionMeta {
+  id: string;
+  label: string;
+}
+
 interface Session {
   cwd: string;
   env: Env;
@@ -73,6 +80,7 @@ interface MirageState {
   vfs: VFS;
   registry: CommandRegistry;
   sessions: Record<string, Session>;
+  sessionOrder: SessionMeta[];
   activeSessionId: string;
   _hydrated: boolean;
   skin: ThemeSkin;
@@ -90,15 +98,20 @@ interface MirageState {
   setSkin: (id: string) => void;
   setMode: (mode: 'dark' | 'light') => void;
   toggleMode: () => void;
+  // Tab management
+  createSession: () => string;
+  closeSession: (id: string) => void;
+  renameSession: (id: string, label: string) => void;
+  switchSession: (id: string) => void;
+  // Persistence
+  _saveState: () => Promise<void>;
+  _loadState: () => Promise<Partial<PersistedData> | false>;
 }
 
-const DEFAULT_SESSION_ID = 'default';
+const DEFAULT_SESSION_ID = crypto.randomUUID?.() ?? 'sess_1';
 
-const vfs = new VFS();
-const registry = createRegistry();
-
-const sessions: Record<string, Session> = {
-  [DEFAULT_SESSION_ID]: {
+function createDefaultSession(_id: string): Session {
+  return {
     cwd: '/home/user',
     env: new Env(),
     history: new History(),
@@ -108,10 +121,19 @@ const sessions: Record<string, Session> = {
       persona: 'You are Mirage, a warm, witty retro-terminal AI companion. Keep replies terminal-friendly. Be concise.',
       byokKey: '',
     },
-  },
-};
+  };
+}
 
-setHistorySource(sessions[DEFAULT_SESSION_ID]!.history.getAll());
+const vfs = new VFS();
+const registry = createRegistry();
+
+const defaultId = DEFAULT_SESSION_ID;
+const sessions: Record<string, Session> = {
+  [defaultId]: createDefaultSession(defaultId),
+};
+const sessionOrder: SessionMeta[] = [{ id: defaultId, label: 'Terminal 1' }];
+
+setHistorySource(sessions[defaultId]!.history.getAll());
 
 function initMode(): 'dark' | 'light' {
   if (typeof window === 'undefined') return 'dark';
@@ -132,7 +154,8 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   vfs,
   registry,
   sessions,
-  activeSessionId: DEFAULT_SESSION_ID,
+  sessionOrder,
+  activeSessionId: defaultId,
   _hydrated: false,
   skin: initSkin(),
   mode: initMode(),
@@ -262,6 +285,9 @@ export const useMirageStore = create<MirageState>((set, get) => ({
       if (skinId && skinId !== 'list') get().setSkin(skinId);
     }
 
+    // Auto-save
+    get()._saveState().catch(() => {});
+
     return { output: result.output, newCwd: result.newCwd };
   },
   getChatState: () => get().sessions[get().activeSessionId]!.chat,
@@ -275,16 +301,84 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     if (!skin) return;
     set({ skin });
     const state = get();
-    applyTheme(skin, state.mode);
+    applyTheme(state.skin, state.mode);
+    state._saveState().catch(() => {});
   },
   setMode: (mode) => {
     set({ mode });
     const state = get();
     applyTheme(state.skin, mode);
+    state._saveState().catch(() => {});
   },
   toggleMode: () => {
     const state = get();
     const newMode = state.mode === 'dark' ? 'light' : 'dark';
     state.setMode(newMode);
+  },
+
+  // Persistence
+  _saveState: async () => {
+    const state = get();
+    const data: PersistedData = {
+      vfs: state.vfs.toJSON(),
+      sessions: state.sessionOrder.map((meta) => {
+        const s = state.sessions[meta.id]!;
+        return {
+          id: meta.id,
+          label: meta.label,
+          cwd: s.cwd,
+          history: s.history.getAll(),
+          chatMessages: s.chat.chatMessages,
+          chatModel: s.chat.model,
+          chatPersona: s.chat.persona,
+          byokKey: s.chat.byokKey,
+        };
+      }),
+      settings: { skin: state.skin.id, mode: state.mode },
+    };
+    await saveToIndexedDB(data);
+  },
+  _loadState: async () => {
+    const data = await loadFromIndexedDB();
+    if (!data.vfs && !data.sessions) return false;
+    return data;
+  },
+  createSession: () => {
+    const id = crypto.randomUUID();
+    const count = get().sessionOrder.length + 1;
+    const session = createDefaultSession(id);
+    set((s) => ({
+      sessions: { ...s.sessions, [id]: session },
+      sessionOrder: [...s.sessionOrder, { id, label: `Terminal ${count}` }],
+      activeSessionId: id,
+    }));
+    get()._saveState().catch(() => {});
+    return id;
+  },
+  closeSession: (id) => {
+    const state = get();
+    if (state.sessionOrder.length <= 1) return;
+    const newOrder = state.sessionOrder.filter((m) => m.id !== id);
+    const newSessions = { ...state.sessions };
+    delete newSessions[id];
+    const newActive = state.activeSessionId === id
+      ? newOrder[newOrder.length - 1]!.id
+      : state.activeSessionId;
+    set({ sessions: newSessions, sessionOrder: newOrder, activeSessionId: newActive });
+    get()._saveState().catch(() => {});
+  },
+  renameSession: (id, label) => {
+    set((s) => ({
+      sessionOrder: s.sessionOrder.map((m) => (m.id === id ? { ...m, label } : m)),
+    }));
+    get()._saveState().catch(() => {});
+  },
+  switchSession: (id) => {
+    const state = get();
+    if (!state.sessions[id]) return;
+    set({ activeSessionId: id });
+    // Update history source for the new session
+    const session = state.sessions[id]!;
+    setHistorySource(session.history.getAll());
   },
 }));

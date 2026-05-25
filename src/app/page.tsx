@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { TabBar } from '@/components/workspace/TabBar';
 
 const XtermView = dynamic(
   () => import('@/components/terminal/XtermView').then((m) => m.XtermView),
@@ -9,8 +10,11 @@ const XtermView = dynamic(
 
 export default function Home() {
   return (
-    <main className="h-dvh w-dvw overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
-      <XtermView />
+    <main className="flex h-dvh w-dvw flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
+      <TabBar />
+      <div className="flex-1 overflow-hidden">
+        <XtermView />
+      </div>
     </main>
   );
 }

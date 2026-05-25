@@ -8,6 +8,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { useMirageStore } from '@/store';
 import { complete } from '@/kernel/completer';
 import { applyTheme } from '@/themes/registry';
+import { MobileKeyBar } from '@/components/workspace/MobileKeyBar';
 import 'xterm/css/xterm.css';
 
 export function XtermView() {
@@ -242,6 +243,26 @@ export function XtermView() {
           role="terminal"
         />
       </div>
+      <MobileKeyBar onKey={(key) => {
+        // handle key via imperative handle
+        const term = terminalRef.current;
+        if (!term) return;
+        if (key === 'Tab') term.write('\t');
+        else if (key === 'Ctrl+C') {
+          currentAbortRef.current?.abort();
+          currentAbortRef.current = null;
+          executingRef.current = false;
+          term.write('^C\r\n');
+        } else if (key === 'Esc') {
+          currentAbortRef.current?.abort();
+          currentAbortRef.current = null;
+          executingRef.current = false;
+          term.write('\r\n');
+        } else if (key === '↑') term.write('\x1b[A');
+        else if (key === '↓') term.write('\x1b[B');
+        else if (key === '←') term.write('\x1b[D');
+        else if (key === '→') term.write('\x1b[C');
+      }} />
       <div className="status-bar">
         <span>Esc to interrupt</span>
         <span>{skin.label} · {mode}</span>
