@@ -1,14 +1,49 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
+import { useMirageStore } from '@/store';
 import 'xterm/css/xterm.css';
 
 export function XtermView() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const lineRef = useRef('');
+  const currentAbortRef = useRef<AbortController | null>(null);
+  const executingRef = useRef(false);
+
+  const execute = useMirageStore((s) => s.execute);
+  const addHistory = useMirageStore((s) => s.addHistory);
+  const navigateHistory = useMirageStore((s) => s.navigateHistory);
+
+  const writeOutput = useCallback((term: Terminal, output: string) => {
+    term.write(output.replace(/\n/g, '\r\n'));
+  }, []);
+
+  const runCommand = useCallback(async (term: Terminal, line: string) => {
+    if (executingRef.current) return;
+    executingRef.current = true;
+
+    addHistory(line);
+
+    const abortController = new AbortController();
+    currentAbortRef.current = abortController;
+
+    try {
+      const result = await execute(line);
+      if (result.output) {
+        writeOutput(term, result.output);
+      }
+    } catch {
+      writeOutput(term, 'Error executing command.\r\n');
+    } finally {
+      currentAbortRef.current = null;
+      executingRef.current = false;
+    }
+  }, [execute, addHistory, writeOutput]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -39,7 +74,7 @@ export function XtermView() {
     try {
       term.loadAddon(new WebglAddon());
     } catch {
-      // WebGL unavailable — falls back to canvas renderer
+      // WebGL unavailable
     }
 
     fitAddon.fit();
@@ -47,25 +82,63 @@ export function XtermView() {
     const ro = new ResizeObserver(() => fitAddon.fit());
     ro.observe(container);
 
-    // --- Echo shell ---
     let line = '';
-    const prompt = '\r$ ';
+    const prompt = '\r\x1b[1;32m$\x1b[0m ';
 
     term.onKey(({ key, domEvent }) => {
-      if (domEvent.key === 'Enter') {
-        term.writeln(`\r$ ${line}`);
+      if (executingRef.current && domEvent.key === 'Escape') {
+        currentAbortRef.current?.abort();
+        currentAbortRef.current = null;
+        executingRef.current = false;
+        term.write('\r\n\x1b[2mInterrupted.\x1b[0m\r\n');
+        term.write(prompt);
         line = '';
+        lineRef.current = '';
+        return;
+      }
+
+      if (domEvent.key === 'Enter') {
+        if (executingRef.current) return;
+        const cmd = line.trim();
+        line = '';
+        lineRef.current = '';
+        term.write('\r\n');
+        if (cmd) {
+          runCommand(term, cmd);
+        }
         term.write(prompt);
       } else if (domEvent.key === 'Backspace') {
-        if (line.length > 0) {
+        if (line.length > 0 && !executingRef.current) {
           line = line.slice(0, -1);
+          lineRef.current = line;
           term.write('\b \b');
         }
       } else if (domEvent.ctrlKey && domEvent.key === 'l') {
         term.clear();
-        term.write(prompt);
-      } else if (domEvent.key.length === 1) {
+        term.write(prompt + line);
+      } else if (domEvent.key === 'ArrowUp') {
+        const prev = navigateHistory('back');
+        if (prev !== undefined) {
+          term.write('\r\x1b[K' + prompt + prev);
+          line = prev;
+          lineRef.current = prev;
+        }
+      } else if (domEvent.key === 'ArrowDown') {
+        const next = navigateHistory('forward');
+        if (next !== undefined) {
+          term.write('\r\x1b[K' + prompt + next);
+          line = next;
+          lineRef.current = next;
+        } else {
+          term.write('\r\x1b[K' + prompt);
+          line = '';
+          lineRef.current = '';
+        }
+      } else if (domEvent.key === 'Tab') {
+        domEvent.preventDefault();
+      } else if (domEvent.key.length === 1 && !executingRef.current) {
         line += key;
+        lineRef.current = line;
         term.write(key);
       }
     });
@@ -79,14 +152,17 @@ export function XtermView() {
     });
 
     term.writeln('\x1b[1;32mMirage v0.1.0\x1b[0m — virtual terminal');
-    term.writeln('Type a command and press Enter.\r\n');
+    term.writeln('Type help to see available commands.\r\n');
     term.write(prompt);
+
+    terminalRef.current = term;
 
     return () => {
       ro.disconnect();
       term.dispose();
+      terminalRef.current = null;
     };
-  }, []);
+  }, [runCommand, navigateHistory]);
 
   return (
     <div

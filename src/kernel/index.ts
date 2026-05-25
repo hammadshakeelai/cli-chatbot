@@ -1,0 +1,23 @@
+export { VFS } from './vfs';
+export { Env } from './env';
+export { History } from './history';
+export { CommandRegistry } from './registry';
+export { parse } from './parser';
+export { executeLine } from './pipeline';
+
+export { lsCommand } from './commands/ls';
+export { cdCommand } from './commands/cd';
+export { pwdCommand } from './commands/pwd';
+export { catCommand } from './commands/cat';
+export { echoCommand } from './commands/echo';
+export { mkdirCommand } from './commands/mkdir';
+export { touchCommand } from './commands/touch';
+export { rmCommand } from './commands/rm';
+export { mvCommand } from './commands/mv';
+export { cpCommand } from './commands/cp';
+export { clearCommand } from './commands/clear';
+export { whoamiCommand } from './commands/whoami';
+export { helpCommand, setHelpRegistry } from './commands/help';
+export { manCommand } from './commands/man';
+export { historyCommand, setHistorySource } from './commands/history';
+export { aiCommand } from './ai/aiCommand';
