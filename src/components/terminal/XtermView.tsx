@@ -6,6 +6,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { useMirageStore } from '@/store';
+import { playKeyClick } from '@/lib/sound';
 import { complete } from '@/kernel/completer';
 import { applyTheme } from '@/themes/registry';
 import { MobileKeyBar } from '@/components/workspace/MobileKeyBar';
@@ -26,6 +27,7 @@ export function XtermView() {
   const getActiveSession = useMirageStore((s) => s.getActiveSession);
   const skin = useMirageStore((s) => s.skin);
   const mode = useMirageStore((s) => s.mode);
+  const soundFx = useMirageStore((s) => s.soundFx);
 
   const writeOutput = useCallback((term: Terminal, output: string) => {
     term.write(output.replace(/\n/g, '\r\n'));
@@ -120,9 +122,35 @@ export function XtermView() {
         lineRef.current = '';
         term.write('\r\n');
         if (cmd) {
-          runCommand(term, cmd);
+          // Handle ! history shortcuts
+          const expanded = expandHistory(cmd, getActiveSession().history.getAll());
+          if (expanded !== cmd) {
+            term.write(expanded + '\r\n');
+          }
+          runCommand(term, expanded);
         }
         term.write(prompt);
+      } else if (domEvent.ctrlKey && domEvent.key === 'r') {
+        // Simple reverse search: cycle backward through matching history
+        domEvent.preventDefault();
+        if (executingRef.current) return;
+        const search = line.trim().toLowerCase();
+        if (!search) {
+          term.write('\x07'); // Bell
+          return;
+        }
+        const session = getActiveSession();
+        const allHistory = session.history.getAll();
+        const matches = allHistory.filter((h) => h.toLowerCase().includes(search));
+        if (matches.length > 0) {
+          const match = matches[matches.length - 1]!;
+          term.write('\r\x1b[K\x1b[2m(reverse-i-search)\x1b[0m`' + search + '`: ');
+          line = match;
+          lineRef.current = match;
+          term.write(match);
+        } else {
+          term.write('\x07');
+        }
       } else if (domEvent.key === 'Backspace') {
         if (line.length > 0 && !executingRef.current) {
           tabCycleRef.current = null;
@@ -198,6 +226,7 @@ export function XtermView() {
           tabCycleRef.current = { matches: result.matches, idx: -1 };
         }
       } else if (domEvent.key.length === 1 && !executingRef.current) {
+        if (soundFx) playKeyClick();
         tabCycleRef.current = null;
         line += key;
         lineRef.current = line;
@@ -224,7 +253,7 @@ export function XtermView() {
       term.dispose();
       terminalRef.current = null;
     };
-  }, [runCommand, getPrompt, getActiveSession, registry, vfs, skin, mode]);
+  }, [runCommand, getPrompt, getActiveSession, registry, vfs, skin, mode, soundFx]);
 
   // Re-apply theme on skin/mode change
   useEffect(() => {
@@ -269,6 +298,22 @@ export function XtermView() {
       </div>
     </div>
   );
+}
+
+function expandHistory(cmd: string, history: string[]): string {
+  if (cmd === '!!') return history[history.length - 1] ?? cmd;
+  if (cmd.startsWith('!') && /^!\d+$/.test(cmd)) {
+    const idx = parseInt(cmd.slice(1), 10);
+    if (idx > 0 && idx <= history.length) return history[idx - 1]!;
+    return cmd; // not found, let it fail naturally
+  }
+  if (cmd.startsWith('!') && cmd.length > 1) {
+    const search = cmd.slice(1).toLowerCase();
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i]!.toLowerCase().startsWith(search)) return history[i]!;
+    }
+  }
+  return cmd;
 }
 
 function findCommonPrefix(strings: string[]): string {

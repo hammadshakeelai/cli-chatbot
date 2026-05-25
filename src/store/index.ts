@@ -37,6 +37,8 @@ import { modelCommand } from '@/kernel/commands/model-cmd';
 import { uiCommand } from '@/kernel/commands/ui-cmd';
 import { dayCommand, nightCommand } from '@/kernel/commands/day-cmd';
 import { fxCommand } from '@/kernel/commands/fx-cmd';
+import { settingsCommand, shareThemeCommand } from '@/kernel/commands/settings-cmd';
+import { soundCommand } from '@/kernel/commands/sound-cmd';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
@@ -50,6 +52,7 @@ function createRegistry(): CommandRegistry {
     neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
     fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
     modelCommand, uiCommand, dayCommand, nightCommand, fxCommand,
+    settingsCommand, shareThemeCommand, soundCommand,
     { ...aiCommand, name: 'ask' }, // alias for ai
   ];
   for (const cmd of commands) reg.register(cmd);
@@ -87,6 +90,7 @@ interface MirageState {
   skin: ThemeSkin;
   mode: 'dark' | 'light';
   fxEnabled: boolean;
+  soundFx: boolean;
 
   setHydrated: (v: boolean) => void;
   execute: (line: string, signal?: AbortSignal, onOutput?: (chunk: string) => void) => Promise<{ output: string; newCwd: string }>;
@@ -101,6 +105,7 @@ interface MirageState {
   setMode: (mode: 'dark' | 'light') => void;
   toggleMode: () => void;
   setFxEnabled: (v: boolean) => void;
+  setSoundFx: (v: boolean) => void;
   // Tab management
   createSession: () => string;
   closeSession: (id: string) => void;
@@ -163,6 +168,7 @@ export const useMirageStore = create<MirageState>((set, get) => ({
   skin: initSkin(),
   mode: initMode(),
   fxEnabled: true,
+  soundFx: false,
 
   setHydrated: (v) => set({ _hydrated: v }),
 
@@ -278,6 +284,11 @@ export const useMirageStore = create<MirageState>((set, get) => ({
       session.chat.chatMessages = result.state.chatMessages;
       if (result.state.chatModel) session.chat.model = result.state.chatModel;
       if (result.state.chatPersona) session.chat.persona = result.state.chatPersona;
+      // Sync store-level settings from state mutations
+      if (result.state.soundFx !== undefined) get().setSoundFx(result.state.soundFx);
+      if (result.state.fxEnabled !== undefined) get().setFxEnabled(result.state.fxEnabled);
+      if (result.state.skin) get().setSkin(result.state.skin);
+      if (result.state.mode) get().setMode(result.state.mode);
     }
 
     // Handle theme commands post-execution
@@ -290,6 +301,8 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     }
     else if (trimmed === 'fx on') get().setFxEnabled(true);
     else if (trimmed === 'fx off') get().setFxEnabled(false);
+    else if (trimmed === '__soundfx_on__') get().setSoundFx(true);
+    else if (trimmed === '__soundfx_off__') get().setSoundFx(false);
 
     // Auto-save
     get()._saveState().catch(() => {});
@@ -322,6 +335,7 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     state.setMode(newMode);
   },
   setFxEnabled: (v) => set({ fxEnabled: v }),
+  setSoundFx: (v) => set({ soundFx: v }),
 
   // Persistence
   _saveState: async () => {

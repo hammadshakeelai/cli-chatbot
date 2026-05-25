@@ -11,6 +11,10 @@ export interface MutableState {
   chatMessages: import('@/providers/types').ChatMsg[];
   chatModel?: string;
   chatPersona?: string;
+  skin?: string;
+  mode?: 'dark' | 'light';
+  fxEnabled?: boolean;
+  soundFx?: boolean;
 }
 
 export interface CommandContext {
