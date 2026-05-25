@@ -15,7 +15,7 @@ export interface CommandContext {
   vfs: import('./vfs').VFS;
   stdin?: AsyncIterable<string>;
   signal: AbortSignal;
-  ui: { skin: string; mode: 'dark' | 'light'; cols: number; rows: number };
+  ui: { skin: string; mode: 'dark' | 'light'; cols: number; rows: number; reducedMotion: boolean };
   emit(chunk: string): void;
   registry?: import('./registry').CommandRegistry;
 }

@@ -64,7 +64,7 @@ export function buildContext(
     vfs,
     stdin,
     signal,
-    ui: { skin: 'default', mode: 'dark', cols: 80, rows: 24 },
+    ui: { skin: 'default', mode: 'dark', cols: 80, rows: 24, reducedMotion: false },
     emit: emit ?? (() => {}),
     registry,
   };
@@ -75,6 +75,7 @@ export async function executeLine(
   kernel: { vfs: VFS; env: Env; registry: CommandRegistry; history: string[] },
   currentCwd: string,
   signal: AbortSignal,
+  onOutput?: (chunk: string) => void,
 ): Promise<{ output: string; newCwd: string }> {
   let output = '';
   let newCwd = currentCwd;
@@ -87,7 +88,7 @@ export async function executeLine(
     const seq = sequences[i]!;
     if (i > 0 && seq.op === '&&' && lastExitCode !== 0) break;
 
-    const result = await executeSequence(seq, kernel, newCwd, signal);
+    const result = await executeSequence(seq, kernel, newCwd, signal, onOutput);
     output += result.output;
     if (result.newCwd !== newCwd) {
       newCwd = result.newCwd;
@@ -103,6 +104,7 @@ async function executeSequence(
   kernel: { vfs: VFS; env: Env; registry: CommandRegistry; history: string[] },
   cwd: string,
   signal: AbortSignal,
+  onOutput?: (chunk: string) => void,
 ): Promise<{ output: string; newCwd: string; exitCode: number }> {
   let output = '';
   let currentCwd = cwd;
@@ -152,7 +154,12 @@ async function executeSequence(
       },
     };
 
-    const ctx = buildContext(cmd, seq, currentCwd, kernel.env, kernel.vfs, signal, kernel.registry, stdin, emit);
+    const streamEmit = (chunk: string) => {
+      emit(chunk);
+      onOutput?.(chunk);
+    };
+
+    const ctx = buildContext(cmd, seq, currentCwd, kernel.env, kernel.vfs, signal, kernel.registry, stdin, streamEmit);
 
     try {
       for await (const chunk of cmdDef.run(ctx)) {
@@ -168,7 +175,10 @@ async function executeSequence(
         } else if (hasPipeToNext) {
           pipeBuffer.push(chunk);
         } else {
-          chunks.push(chunk);
+          // Real-time streaming for animation commands
+          onOutput?.(chunk);
+          // Only buffer when not streaming to avoid giant return strings
+          if (!onOutput) chunks.push(chunk);
         }
       }
     } catch {

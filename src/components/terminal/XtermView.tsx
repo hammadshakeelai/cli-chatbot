@@ -36,8 +36,13 @@ export function XtermView() {
     const abortController = new AbortController();
     currentAbortRef.current = abortController;
 
+    const streamOutput = (chunk: string) => {
+      writeOutput(term, chunk);
+    };
+
     try {
-      const result = await execute(line);
+      const result = await execute(line, abortController.signal, streamOutput);
+      // Non-streaming output (w/o onOutput) is returned in result.output
       if (result.output) {
         writeOutput(term, result.output);
       }

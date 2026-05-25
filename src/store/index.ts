@@ -16,6 +16,15 @@ import { dfCommand } from '@/kernel/commands/df';
 import { uptimeCommand } from '@/kernel/commands/uptime';
 import { psCommand } from '@/kernel/commands/ps';
 import { neofetchCommand } from '@/kernel/commands/neofetch';
+import { aptCommand } from '@/kernel/commands/apt';
+import { figletCommand } from '@/kernel/commands/figlet-cmd';
+import { cowsayCommand } from '@/kernel/commands/cowsay-cmd';
+import { lolcatCommand } from '@/kernel/commands/lolcat-cmd';
+import { fortuneCommand } from '@/kernel/commands/fortune-cmd';
+import { cmatrixCommand } from '@/kernel/commands/cmatrix-cmd';
+import { hollywoodCommand } from '@/kernel/commands/hollywood-cmd';
+import { slCommand } from '@/kernel/commands/sl-cmd';
+import { nyancatCommand } from '@/kernel/commands/nyancat-cmd';
 
 function createRegistry(): CommandRegistry {
   const reg = new CommandRegistry();
@@ -26,7 +35,8 @@ function createRegistry(): CommandRegistry {
     aiCommand, grepCommand, headCommand, tailCommand, wcCommand,
     envCommand, exportCmdCommand, dateCommand, calCommand, unameCommand,
     treeCommand, whichCommand, dfCommand, uptimeCommand, psCommand,
-    neofetchCommand,
+    neofetchCommand, aptCommand, figletCommand, cowsayCommand, lolcatCommand,
+    fortuneCommand, cmatrixCommand, hollywoodCommand, slCommand, nyancatCommand,
   ];
   for (const cmd of commands) reg.register(cmd);
   setHelpRegistry(reg);
@@ -48,7 +58,7 @@ interface MirageState {
   _hydrated: boolean;
 
   setHydrated: (v: boolean) => void;
-  execute: (line: string) => Promise<{ output: string; newCwd: string }>;
+  execute: (line: string, signal?: AbortSignal, onOutput?: (chunk: string) => void) => Promise<{ output: string; newCwd: string }>;
   getActiveSession: () => Session;
   getHistoryItems: () => string[];
   addHistory: (line: string) => void;
@@ -105,7 +115,7 @@ export const useMirageStore = create<MirageState>((set, get) => ({
     get().getActiveSession().history.resetIndex();
   },
 
-  execute: async (line) => {
+  execute: async (line, signal, onOutput) => {
     const state = get();
     const session = state.sessions[state.activeSessionId]!;
 
@@ -113,7 +123,8 @@ export const useMirageStore = create<MirageState>((set, get) => ({
       line,
       { vfs: state.vfs, env: session.env, registry: state.registry, history: session.history.getAll() },
       session.cwd,
-      new AbortController().signal,
+      signal ?? new AbortController().signal,
+      onOutput,
     );
 
     if (result.newCwd !== session.cwd) {
