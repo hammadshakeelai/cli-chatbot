@@ -1,12 +1,56 @@
 import type { Command, CommandContext, OutputChunk } from '../types';
 
-const COW = [
-  '        \\   ^__^',
-  '         \\  (oo)\\_______',
-  '            (__)\\       )\\/\\',
-  '                ||----w |',
-  '                ||     ||',
-];
+const CHARACTERS: Record<string, string[]> = {
+  cow: [
+    '        \\   ^__^',
+    '         \\  (oo)\\_______',
+    '            (__)\\       )\\/\\',
+    '                ||----w |',
+    '                ||     ||',
+  ],
+  dragon: [
+    '                \\                    /',
+    '                 \\  _________       /',
+    '                  \\/   _____  \\   _/',
+    '                   \\  (o)   (o) /',
+    '                    \\  ___  ___/',
+    '                     \\/  \\/ ',
+    '    ___________      //\\\\',
+    '   /           \\    //  \\\\',
+    '  |  ROAR!     |  //    \\\\',
+    '   \\___________/ //______\\\\',
+  ],
+  tux: [
+    '   \\',
+    '    \\',
+    '        .--.',
+    '       |o_o |',
+    '       |:_/ |',
+    '      //   \\ \\',
+    '     (|     | )',
+    '    / \\_   _/ \\',
+    '    \\___)=(___/',
+  ],
+  cheese: [
+    '       \\',
+    '        \\',
+    '    __  ',
+    '   / _)\\',
+    '  / /__',
+    ' /___/',
+    ' (___)',
+    '  `´',
+  ],
+  stegosaurus: [
+    '                         \\',
+    '                          \\',
+    '    __                   ',
+    '   / _)\\      /\\\\/\\\\/\\\\/\\\\',
+    '  / /__\\_____//___________',
+    ' /____________/           \\',
+    '(___)       (_____________／',
+  ],
+};
 
 function bubble(text: string): string[] {
   const lines = text.split('\n');
@@ -35,8 +79,8 @@ function bubble(text: string): string[] {
 
 export const cowsayCommand: Command = {
   name: 'cowsay',
-  help: 'Display a configurable cow saying text. Usage: cowsay <text>',
-  usage: 'cowsay <text>',
+  help: 'Display a configurable character saying text. Usage: cowsay [-f character] <text>',
+  usage: 'cowsay [-f cow|dragon|tux|cheese|stegosaurus] <text>',
   async *run(ctx: CommandContext): AsyncIterable<OutputChunk> {
     const { isAppUnlocked } = await import('../apt/installer');
     if (!isAppUnlocked('cowsay', ctx.vfs)) {
@@ -44,14 +88,30 @@ export const cowsayCommand: Command = {
       return;
     }
 
-    const text = ctx.args.join(' ') || 'Moo!';
+    const args = [...ctx.args];
+    let character = 'cow';
+
+    // Parse -f flag
+    if (args[0] === '-f' && args[1]) {
+      args.shift(); // remove -f
+      const name = args.shift()!.toLowerCase();
+      if (CHARACTERS[name]) {
+        character = name;
+      } else {
+        yield `Unknown character: ${name}. Available: ${Object.keys(CHARACTERS).join(', ')}\n`;
+        return;
+      }
+    }
+
+    const text = args.join(' ') || 'Moo!';
+    const art = CHARACTERS[character]!;
     const bubbleLines = bubble(text);
 
     for (const bl of bubbleLines) {
       yield bl + '\n';
     }
-    for (const cowLine of COW) {
-      yield cowLine + '\n';
+    for (const line of art) {
+      yield line + '\n';
     }
   },
 };

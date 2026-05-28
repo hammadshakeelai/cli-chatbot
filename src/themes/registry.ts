@@ -40,9 +40,9 @@ export function applyTheme(skin: ThemeSkin, mode: 'dark' | 'light', term?: any):
 
   if (term) {
     const xtermTheme = mode === 'dark' ? skin.xtermTheme.dark : skin.xtermTheme.light;
-    term.setOption('theme', xtermTheme as any);
-    term.setOption('cursorStyle', 'block');
-    term.setOption('cursorBlink', false);
+    term.options.theme = xtermTheme;
+    term.options.cursorStyle = 'block';
+    term.options.cursorBlink = false;
   }
 
   localStorage.setItem('mirage-skin', skin.id);

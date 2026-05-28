@@ -8,7 +8,7 @@ export const unameCommand: Command = {
     const all = ctx.flags['a'] === true;
     const kernel = 'Mirage';
     const hostname = 'mirage';
-    const release = '0.1.0';
+    const release = '0.1.2';
     const arch = 'wasm';
 
     if (all) {

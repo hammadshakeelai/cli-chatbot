@@ -1,36 +1,41 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { APP_VERSION } from '@/lib/constants';
 
-const BOOT_LINES = [
-  '\x1b[32mStarting Mirage...\x1b[0m',
-  '\x1b[2m  [OK] Mounting virtual filesystem\x1b[0m',
-  '\x1b[2m  [OK] Initializing shell kernel\x1b[0m',
-  '\x1b[2m  [OK] Loading command registry\x1b[0m',
-  '\x1b[2m  [OK] Starting AI bridge\x1b[0m',
-  '\x1b[2m  [OK] Applying theme\x1b[0m',
-  '',
-  '\x1b[1;32mWelcome to Mirage v0.1.0\x1b[0m',
-  '\x1b[2mA terminal that isn\'t there.\x1b[0m',
-  '',
+interface BootLine {
+  raw: string;
+  color?: string;
+  dim?: boolean;
+  bold?: boolean;
+}
+
+const BOOT_LINES: BootLine[] = [
+  { raw: '▶ Mirage starting…', color: 'var(--accent)', bold: true },
+  { raw: '  ✓ virtual filesystem mounted', color: 'var(--fg)', dim: true },
+  { raw: '  ✓ shell kernel ready', color: 'var(--fg)', dim: true },
+  { raw: '  ✓ command registry loaded', color: 'var(--fg)', dim: true },
+  { raw: '  ✓ AI bridge connected', color: 'var(--fg)', dim: true },
+  { raw: '  ✓ themes applied', color: 'var(--fg)', dim: true },
+  { raw: '' },
+  { raw: `Mirage v${APP_VERSION}`, color: 'var(--fg)', bold: true },
+  { raw: "A terminal that isn't there.", color: 'var(--fg-dim)', dim: true },
+  { raw: '' },
 ];
-
-const MAX_LINES = BOOT_LINES.length;
 
 export function BootAnimation({ onDone }: { onDone: () => void }) {
   const [visible, setVisible] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    if (visible < MAX_LINES) {
-      const delay = visible < 2 ? 100 : 60;
-      const timer = setTimeout(() => setVisible((v) => v + 1), delay);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => setFadeOut(true), 500);
-      const done = setTimeout(onDone, 1000);
-      return () => { clearTimeout(timer); clearTimeout(done); };
+    if (visible < BOOT_LINES.length) {
+      const delay = visible === 0 ? 80 : visible < 6 ? 70 : 120;
+      const t = setTimeout(() => setVisible((v) => v + 1), delay);
+      return () => clearTimeout(t);
     }
+    const t1 = setTimeout(() => setFadeOut(true), 400);
+    const t2 = setTimeout(onDone, 850);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [visible, onDone]);
 
   return (
@@ -39,26 +44,44 @@ export function BootAnimation({ onDone }: { onDone: () => void }) {
         position: 'fixed',
         inset: 0,
         backgroundColor: 'var(--bg)',
-        color: 'var(--fg)',
-        fontFamily: 'var(--font-mono)',
-        fontSize: '14px',
-        padding: '40px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10000,
         opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.5s ease-out',
+        transition: 'opacity 0.45s ease-out',
       }}
     >
-      <pre style={{ margin: 0, lineHeight: 1.6 }}>{/* xterm won't render here, use plain text */}
+      <pre
+        style={{
+          margin: 0,
+          lineHeight: 1.7,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'clamp(12px, 2vw, 14px)',
+          minWidth: '240px',
+        }}
+      >
         {BOOT_LINES.slice(0, visible).map((line, i) => (
-          <div key={i}>
-            {line.replace(/\x1b\[[0-9;]*m/g, '')}
+          <div
+            key={i}
+            style={{
+              color: line.color ?? 'var(--fg)',
+              opacity: line.dim ? 0.55 : 1,
+              fontWeight: line.bold ? 600 : 400,
+              animation: 'fadeIn 0.2s ease-out',
+            }}
+          >
+            {line.raw}
           </div>
         ))}
       </pre>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(3px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

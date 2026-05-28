@@ -21,3 +21,10 @@ tsconfig.tsbuildinfo
 
 # Debug
 npm-debug.log*
+*.cjs
+screenshot.png
+test-results/
+CONTINUATION_PROMPT.md
+scripts/
+
+.vercel

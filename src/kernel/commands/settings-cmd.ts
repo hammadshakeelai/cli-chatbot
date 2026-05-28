@@ -1,5 +1,10 @@
 import type { Command } from '@/kernel/types';
 
+if (typeof globalThis !== 'undefined') {
+  globalThis.btoa ??= (s: string) => Buffer.from(s).toString('base64');
+  globalThis.atob ??= (b64: string) => Buffer.from(b64, 'base64').toString();
+}
+
 export const settingsCommand: Command = {
   name: 'settings',
   help: 'Export or import settings as JSON',

@@ -4,6 +4,7 @@ import { checkRateLimit } from '@/lib/rate-limiter';
 import type { ChatMsg } from '@/providers/types';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const FALLBACK_SYSTEM_PROMPT =
   'You are Mirage, a warm, witty retro-terminal AI companion. ' +

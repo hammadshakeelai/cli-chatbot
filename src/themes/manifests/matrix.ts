@@ -23,7 +23,12 @@ export const matrixSkin: ThemeSkin = {
     light: { background: '#f0fff0', foreground: '#003311', cursor: '#003311', selectionBackground: '#bbffbb' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[32m[\x1b[1;32mMatrix\x1b[0;32m]\x1b[0m',
+  banner: () => [
+    '\x1b[38;2;0;255;65m  ╦ ╦╔═╗╦═╗╔╦╗╔═╗╦═╗',
+    '\x1b[38;2;0;200;50m  ║ ║╠═╣╠╦╝ ║║║╣ ╠╦╝',
+    '\x1b[38;2;0;138;34m  ╚═╝╩ ╩╩╚══╩╝╚═╝╩╚═',
+    '\x1b[38;2;0;255;65m  ── wake up, Neo ──',
+  ].join('\n'),
   prompt: '> ',
   fx: { glow: true },
 };

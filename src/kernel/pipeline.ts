@@ -5,8 +5,6 @@ import type { Env } from './env';
 import { parse } from './parser';
 import type { SequenceStep, PipelineCmd } from './parser';
 import { expandGlob } from './glob';
-import { setHelpRegistry } from './commands/help';
-import { setHistorySource } from './commands/history';
 
 export interface ExecResult {
   output: string;
@@ -268,7 +266,7 @@ async function executeSequence(
   return { output, newCwd: currentCwd, exitCode };
 }
 
-setHelpRegistry({} as CommandRegistry);
-setHistorySource([]);
+
+
 
 export { parse };

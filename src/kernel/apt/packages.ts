@@ -65,6 +65,27 @@ const packages: PackageManifest[] = [
     description: 'Rainbow cat with poptart',
     provides: ['nyancat'],
   },
+  {
+    name: 'toilet',
+    version: '0.9.0',
+    size: 520,
+    description: 'Display large ASCII text with color and border flair',
+    provides: ['toilet'],
+  },
+  {
+    name: 'pipes',
+    version: '1.0.0',
+    size: 480,
+    description: 'Classic pipes terminal screensaver',
+    provides: ['pipes'],
+  },
+  {
+    name: 'bb',
+    version: '1.0.0',
+    size: 640,
+    description: 'Flying ASCII art demo with cubes, balls, saucers, and stars',
+    provides: ['bb'],
+  },
 ];
 
 export function getPackage(name: string): PackageManifest | undefined {

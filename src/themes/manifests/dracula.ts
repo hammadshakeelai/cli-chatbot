@@ -23,6 +23,11 @@ export const draculaSkin: ThemeSkin = {
     light: { background: '#f8f8f2', foreground: '#282a36', cursor: '#282a36', selectionBackground: '#e0d0f0' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[35mDracula\x1b[0m',
+  banner: () => [
+    '\x1b[38;2;189;147;249m  ╦╔╗╔╔═╗╔═╗╔╗╔╦╔╗╔╦═╗╔═╗',
+    '\x1b[38;2;255;121;198m  ║║║║║ ║║ ║║║║║║║║╠╦╝║╣ ',
+    '\x1b[38;2;80;250;123m  ╩╝╚╝╚═╝╚═╝╝╚╝╩╝╚╝╩╚═╚═╝',
+    '\x1b[38;2;189;147;249m  ── dark purple/pink theme ──',
+  ].join('\n'),
   prompt: '$ ',
 };

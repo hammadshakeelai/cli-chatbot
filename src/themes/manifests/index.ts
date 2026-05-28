@@ -1,32 +1,27 @@
 import { registerSkin } from '../registry';
+import type { ThemeSkin } from '../registry';
 import { claudeCodeSkin } from './claude-code';
-import { opencodeSkin } from './opencode';
-import { classicGreenSkin } from './classic-green';
-import { matrixSkin } from './matrix';
-import { draculaSkin } from './dracula';
-import { amberCrtSkin } from './amber-crt';
-import { synthwaveSkin } from './synthwave';
-import { dosSkin } from './dos';
-import { hackerSkin } from './hacker';
-import { highContrastSkin } from './high-contrast';
-import { openclawSkin } from './openclaw';
+import { SKIN_EXPORT_MAP } from '../skin-meta';
 
-export function registerAllSkins(): void {
-  registerSkin(claudeCodeSkin);
-  registerSkin(opencodeSkin);
-  registerSkin(classicGreenSkin);
-  registerSkin(matrixSkin);
-  registerSkin(draculaSkin);
-  registerSkin(amberCrtSkin);
-  registerSkin(synthwaveSkin);
-  registerSkin(dosSkin);
-  registerSkin(hackerSkin);
-  registerSkin(highContrastSkin);
-  registerSkin(openclawSkin);
+// Default skin — always statically imported since it's shown on first load
+export { claudeCodeSkin };
+
+/**
+ * Dynamically import a skin module by ID, register it, and return the skin.
+ * Each skin file becomes its own webpack chunk, loaded on demand.
+ */
+export async function loadSkin(id: string): Promise<ThemeSkin> {
+  const { getSkin } = await import('../registry');
+  const existing = getSkin(id);
+  if (existing) return existing;
+
+  const exportName = SKIN_EXPORT_MAP[id];
+  if (!exportName) throw new Error(`Unknown skin: ${id}`);
+
+  // Dynamic import — webpack will create a separate chunk per skin file
+  const mod = await import(/* webpackChunkName: "skin-[request]" */ `./${id}`);
+  const skin = (mod as Record<string, ThemeSkin>)[exportName];
+  if (!skin) throw new Error(`Skin module ${id} missing export ${exportName}`);
+  registerSkin(skin);
+  return skin;
 }
-
-export {
-  claudeCodeSkin, opencodeSkin, classicGreenSkin, matrixSkin,
-  draculaSkin, amberCrtSkin, synthwaveSkin, dosSkin, hackerSkin,
-  highContrastSkin, openclawSkin,
-};

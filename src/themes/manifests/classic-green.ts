@@ -45,9 +45,12 @@ export const classicGreenSkin: ThemeSkin = {
     light: { background: '#f0fff0', foreground: '#003300', cursor: '#003300', selectionBackground: '#bbffbb' },
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', monospace" },
-  banner() {
-    return '\x1b[32mMirage VT100\x1b[0m';
-  },
+  banner: () => [
+    '\x1b[38;2;0;255;0m  ╦ ╦╔═╗╔╦╗╔═╗  ╦ ╦╦╔╗╔╦╔═╗',
+    '\x1b[38;2;0;200;0m  ║ ║╠═╣ ║║║╣   ║ ║║║║║║╔═╝',
+    '\x1b[38;2;0;150;0m  ╚═╝╩ ╩═╩╝╚═╝  ╚═╝╩╝╚╝╩╚═╝',
+    '\x1b[38;2;0;255;0m  ── VT100 phosphor terminal ──',
+  ].join('\n'),
   prompt: '> ',
   fx: { scanlines: true },
 };

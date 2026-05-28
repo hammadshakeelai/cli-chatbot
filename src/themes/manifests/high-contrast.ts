@@ -23,6 +23,11 @@ export const highContrastSkin: ThemeSkin = {
     light: { background: '#ffffff', foreground: '#000000', cursor: '#000000', selectionBackground: '#ccccff' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[1;37mMIRAGE [HIGH CONTRAST]\x1b[0m',
+  banner: () => [
+    '\x1b[1;37m  ╦ ╦╦╔═╗╔═╗╦═╗  ╔═╗╦═╗╦╔╗╔╔═╗╔═╗╦═╗',
+    '\x1b[1;37m  ║ ║║║  ║ ║╠╦╝  ║ ║╠╦╝║║║║║ ║║ ║╠╦╝',
+    '\x1b[1;37m  ╚═╝╩╚═╝╚═╝╩╚═  ╚═╝╩╚═╩╝╚╝╚═╝╚═╝╩╚═',
+    '\x1b[1;37m  ── WCAG AAA  high contrast ──',
+  ].join('\n'),
   prompt: '> ',
 };

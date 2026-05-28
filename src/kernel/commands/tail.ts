@@ -14,11 +14,11 @@ export const tailCommand: Command = {
         yield `tail: ${ctx.args[0]}: No such file or directory\n`;
         return;
       }
-      lines = content.split('\n');
+      lines = content.replace(/\n$/, '').split('\n');
     } else if (ctx.stdin) {
       const chunks: string[] = [];
       for await (const chunk of ctx.stdin) chunks.push(chunk);
-      lines = chunks.join('').split('\n');
+      lines = chunks.join('').replace(/\n$/, '').split('\n');
     } else {
       return;
     }

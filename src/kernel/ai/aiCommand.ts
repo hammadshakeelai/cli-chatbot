@@ -39,8 +39,8 @@ export const aiCommand: Command = {
     const systemMsg: ChatMsg = { role: 'system', content: persona };
     const messagesToSend = [systemMsg, ...chatMessages, userMsg];
 
-    // Show spinner/status
-    yield `\x1b[2mThinking\x1b[0m`;
+    // Show streaming status — per reference: "Honking…" in yellow/red
+    yield `\x1b[1;33mHonking…\x1b[0m`;
 
     try {
       const response = await fetch('/api/chat', {

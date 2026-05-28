@@ -2,9 +2,10 @@ import type { Provider, ChatMsg, GenOpts, StreamDelta, MetaDelta } from './types
 import { geminiProvider } from './gemini';
 import { groqProvider } from './groq';
 import { openrouterProvider } from './openrouter';
+import { grokProvider } from './grok';
 
-const ALL_PROVIDERS: Provider[] = [geminiProvider, groqProvider, openrouterProvider];
-const DEFAULT_CHAIN = ['gemini', 'groq', 'openrouter'];
+const ALL_PROVIDERS: Provider[] = [geminiProvider, groqProvider, openrouterProvider, grokProvider];
+const DEFAULT_CHAIN = ['gemini', 'groq', 'xai', 'openrouter'];
 
 export function getProvider(id: string): Provider | undefined {
   return ALL_PROVIDERS.find((p) => p.id === id);

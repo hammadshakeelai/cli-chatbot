@@ -23,7 +23,12 @@ export const amberCrtSkin: ThemeSkin = {
     light: { background: '#fff8f0', foreground: '#553300', cursor: '#553300', selectionBackground: '#ffe0bb' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[33mAmber CRT\x1b[0m',
+  banner: () => [
+    '\x1b[38;2;255;176;0m  ╔═╗╔═╗╔═╗╦═╗╦╔═╗  ╦╔═╗╦╔╗╔',
+    '\x1b[38;2;255;144;0m  ╠═╝╠═╣║ ╦╠╦╝║║   ║║ ║║║║║',
+    '\x1b[38;2;200;100;0m  ╩  ╩ ╩╚═╝╩╚═╩╚═╝╚╩╚═╝╩╝╚╝',
+    '\x1b[38;2;255;176;0m  ── amber phosphor terminal ──',
+  ].join('\n'),
   prompt: '> ',
   fx: { scanlines: true, glow: true, flicker: true, curvature: true },
 };

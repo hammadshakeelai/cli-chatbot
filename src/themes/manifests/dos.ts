@@ -25,6 +25,12 @@ export const dosSkin: ThemeSkin = {
     light: { background: '#c0c0c0', foreground: '#000000', cursor: '#000000', selectionBackground: '#a0a0ff' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[1;37mMicrosoft(R) Mirage(TM)\x1b[0m\r\n\x1b[2m(C) Copyright 2026\x1b[0m',
+  banner: () => [
+    '\x1b[1;37m  ╔╗╔═╗╦═╗╔═╗╔═╗╦╔╗╔╔═╗╦═╗',
+    '\x1b[1;37m  ║║║ ║╠╦╝║ ╦║ ╦║║║║║ ║╠╦╝',
+    '\x1b[1;37m  ╝╚╚═╝╩╚═╚═╝╚═╝╩╝╚╝╚═╝╩╚═',
+    '\x1b[2m  Microsoft(R) Mirage(TM) v2.0',
+    '\x1b[2m  (C) Copyright 2026  All rights reserved.',
+  ].join('\r\n'),
   prompt: 'C:\\> ',
 };

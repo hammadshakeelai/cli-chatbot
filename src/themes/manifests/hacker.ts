@@ -23,7 +23,12 @@ export const hackerSkin: ThemeSkin = {
     light: { background: '#e0ffe0', foreground: '#002200', cursor: '#002200', selectionBackground: '#aaffaa' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[32mROOT@MIRAGE:~#\x1b[0m',
+  banner: () => [
+    '\x1b[38;2;0;255;0m  ╦╔═╗╔═╗╦═╗╦═╗╔═╗╦═╗',
+    '\x1b[38;2;51;255;51m  ║║ ║║ ║╠╦╝╠╦╝║╣ ╠╦╝',
+    '\x1b[38;2;102;255;102m  ╩╚═╝╚═╝╩╚═╩╚═╚═╝╩╚═',
+    '\x1b[38;2;0;255;0m  ── root@hacker:~# exploit ──',
+  ].join('\n'),
   prompt: '# ',
   fx: { glow: true, scanlines: true },
 };

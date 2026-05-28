@@ -10,6 +10,8 @@ export interface PersistedData {
   sessions: Array<{
     id: string;
     label: string;
+    type: 'terminal' | 'chat' | 'mythos';
+    tabSkin: string | null;
     cwd: string;
     history: string[];
     chatMessages: unknown[];

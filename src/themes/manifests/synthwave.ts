@@ -23,7 +23,12 @@ export const synthwaveSkin: ThemeSkin = {
     light: { background: '#f5f0ff', foreground: '#1a0020', cursor: '#1a0020', selectionBackground: '#e0d0f0' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => '\x1b[35mSYNTHWAVE \x1b[36m1986\x1b[0m',
+  banner: () => [
+    '\x1b[38;2;255;0;255m  ╔═╗╦╔╗╔╦╔╗╔╔═╗╦ ╦╔═╗╦═╗',
+    '\x1b[38;2;255;0;128m  ║ ╦║║║║║║║║║╣ ║ ║║╣ ╠╦╝',
+    '\x1b[38;2;0;255;255m  ╚═╝╩╝╚╝╩╝╚╝╚═╝╚═╝╚═╝╩╚═',
+    '\x1b[38;2;255;0;255m  ── neon 80s  ──  \x1b[38;2;255;255;0m16k ──',
+  ].join('\n'),
   prompt: '❯ ',
   fx: { glow: true },
 };

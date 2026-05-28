@@ -6,13 +6,14 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai",
+  "connect-src 'self' https://generativelanguage.googleapis.com https://api.groq.com https://openrouter.ai https://api.x.ai",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
 ];
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   async headers() {
     return [
       {
@@ -28,4 +29,9 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// @next/bundle-analyzer — enabled via ANALYZE=true env var (e.g. `npm run analyze`)
+const config: NextConfig = process.env.ANALYZE === 'true'
+  ? require('@next/bundle-analyzer')({ enabled: true })(nextConfig)
+  : nextConfig;
+
+export default config;

@@ -17,6 +17,10 @@ function getDayKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export function clearRateLimiter(): void {
+  buckets.clear();
+}
+
 export function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetIn: number } {
   const now = Date.now();
   const dayKey = getDayKey();
