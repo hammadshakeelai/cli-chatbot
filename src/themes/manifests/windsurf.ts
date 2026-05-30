@@ -89,12 +89,32 @@ export const windsurfSkin: ThemeSkin = {
     },
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" },
-  banner: () => [
-    '\x1b[38;2;0;212;170m  ╦ ╦╦╔╗╔╦╔╗╔╔═╗╦═╗╔═╗╦╔╗╔  ',
-    '\x1b[38;2;0;188;212m  ║ ║║║║║║║║║║╣ ╠╦╝║ ║║║║║  ',
-    '\x1b[38;2;0;153;170m  ╚═╝╩╝╚╝╩╝╚╝╚═╝╩╚═╚═╝╩╝╚╝  ',
-    '\x1b[38;2;0;212;170m  ── ride the wind ──        ',
-  ].join('\n'),
+  banner(ctx) {
+    const T = '\x1b[38;2;0;212;170m';    // teal
+    const C = '\x1b[38;2;0;188;212m';    // cyan
+    const D = '\x1b[38;2;0;153;170m';    // dark teal
+    const DIM = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const model = ctx.model || 'claude-3.5-sonnet';
+
+    return [
+      '',
+      `${T}${BOLD}  🌊 Windsurf${RST}`,
+      `${D}  ─────────────────────────`,
+      `${T}           /`,
+      `${T}          /|`,
+      `${C}         / |`,
+      `${C}        /  |`,
+      `${D}  ~~~~~(   )~~~~~~~~~~~~~~~~`,
+      '',
+      `${T}  ✦ Cascade agent active`,
+      `${DIM}  model  ${model}`,
+      `${DIM}  flow   deep codebase`,
+      `${D}  ─────────────────────────`,
+      `${DIM}  Surf the code · /help${RST}`,
+    ].join('\r\n');
+  },
   prompt: '\x1b[38;2;0;212;170m🌊\x1b[0m ',
   fx: { scanlines: false, glow: true, flicker: false, curvature: false },
 };

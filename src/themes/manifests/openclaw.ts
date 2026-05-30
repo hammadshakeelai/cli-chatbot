@@ -79,12 +79,30 @@ export const openclawSkin: ThemeSkin = {
     },
   },
   fonts: { mono: "'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[38;2;255;107;53m  ╔═╗╦═╗╔═╗╦ ╦╔╗╔╔═╗╦╔═╗  ',
-    '\x1b[38;2;255;69;0m  ╠═╣╠╦╝║ ╦║ ║║║║╠═╣║╔═╝  ',
-    '\x1b[38;2;204;55;0m  ╩ ╩╩╚═╚═╝╚═╝╝╚╝╩ ╩╩╚═╝  ',
-    '\x1b[38;2;255;107;53m  ── feral hacker terminal ──  ',
-  ].join('\n'),
+  banner(ctx) {
+    const O = '\x1b[38;2;255;107;53m';   // orange
+    const R = '\x1b[38;2;255;69;0m';     // red-orange
+    const D = '\x1b[38;2;204;55;0m';     // dark orange
+    const DIM = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const model = ctx.model || 'auto';
+
+    return [
+      '',
+      `${O}${BOLD}  ❯ OPENCLAW${RST}`,
+      `${D}  ─────────────────────────`,
+      `${O}       /\\        /\\`,
+      `${R}      <  > <><> <  >`,
+      `${D}       \\/        \\/`,
+      '',
+      `${O}  ⚡ Power-user mode`,
+      `${DIM}  model  ${model}`,
+      `${DIM}  mode   no-hand-holding`,
+      `${D}  ─────────────────────────`,
+      `${DIM}  Be precise. No fluff.${RST}`,
+    ].join('\r\n');
+  },
   prompt: '\x1b[38;2;255;107;53m❯\x1b[0m ',
   fx: { scanlines: true, flicker: false, glow: false, curvature: false },
 };

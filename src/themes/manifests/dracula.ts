@@ -23,11 +23,31 @@ export const draculaSkin: ThemeSkin = {
     light: { background: '#f8f8f2', foreground: '#282a36', cursor: '#282a36', selectionBackground: '#e0d0f0' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[38;2;189;147;249m  ╦╔╗╔╔═╗╔═╗╔╗╔╦╔╗╔╦═╗╔═╗',
-    '\x1b[38;2;255;121;198m  ║║║║║ ║║ ║║║║║║║║╠╦╝║╣ ',
-    '\x1b[38;2;80;250;123m  ╩╝╚╝╚═╝╚═╝╝╚╝╩╝╚╝╩╚═╚═╝',
-    '\x1b[38;2;189;147;249m  ── dark purple/pink theme ──',
-  ].join('\n'),
-  prompt: '$ ',
+  banner() {
+    const P  = '\x1b[38;2;189;147;249m';   // purple
+    const PK = '\x1b[38;2;255;121;198m';   // pink
+    const GR = '\x1b[38;2;80;250;123m';    // green
+    const CY = '\x1b[38;2;139;233;253m';   // cyan
+    const BOLD = '\x1b[1m';
+    const DIM = '\x1b[2m';
+    const RST = '\x1b[0m';
+
+    return [
+      '',
+      `${P}${BOLD}  ✦ DRACULA ✦${RST}`,
+      `${DIM}  ─────────────────────────`,
+      `${PK}  ^v^             ^v^`,
+      `${PK}  (  @         @  )`,
+      `${P}   |    _____    |`,
+      `${GR}   |   /     \\   |`,
+      `${P}    \`-----------'`,
+      '',
+      `${CY}  darkness: maximum`,
+      `${PK}  vibes: immaculate`,
+      `${DIM}  theme: dracula classic`,
+      `${DIM}  ─────────────────────────`,
+      `${DIM}  The night is yours.${RST}`,
+    ].join('\r\n');
+  },
+  prompt: '\x1b[38;2;189;147;249m✦\x1b[0m ',
 };

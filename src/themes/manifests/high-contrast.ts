@@ -23,11 +23,23 @@ export const highContrastSkin: ThemeSkin = {
     light: { background: '#ffffff', foreground: '#000000', cursor: '#000000', selectionBackground: '#ccccff' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[1;37m  ╦ ╦╦╔═╗╔═╗╦═╗  ╔═╗╦═╗╦╔╗╔╔═╗╔═╗╦═╗',
-    '\x1b[1;37m  ║ ║║║  ║ ║╠╦╝  ║ ║╠╦╝║║║║║ ║║ ║╠╦╝',
-    '\x1b[1;37m  ╚═╝╩╚═╝╚═╝╩╚═  ╚═╝╩╚═╩╝╚╝╚═╝╚═╝╩╚═',
-    '\x1b[1;37m  ── WCAG AAA  high contrast ──',
-  ].join('\n'),
+  banner() {
+    return [
+      '',
+      '  === HIGH CONTRAST ===',
+      '  ######################',
+      '  #                    #',
+      '  #   WCAG AAA  A11Y   #',
+      '  #   maximum clarity  #',
+      '  #                    #',
+      '  ######################',
+      '',
+      '  [STATUS] Ready',
+      '  [MODE]   Accessibility-first',
+      '  [FONT]   JetBrains Mono',
+      '  ######################',
+      '  Type a command or question.',
+    ].join('\r\n');
+  },
   prompt: '> ',
 };

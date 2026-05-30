@@ -93,67 +93,50 @@ export const claudeCodeSkin: ThemeSkin = {
     ui: "'Inter', system-ui, sans-serif",
   },
   banner(ctx) {
-    const R = '\x1b[31m';
+    const R = '\x1b[38;2;229;72;77m';
     const DIM = '\x1b[2m';
     const RST = '\x1b[0m';
     const BOLD = '\x1b[1m';
+    const W = 32; // mobile-friendly interior width, total line = 34
 
     const label = 'Claude Code';
-    const W = 59; // interior width between ││, total line = 61
+    const TOP = `${R}╭─ ${label} ${'─'.repeat(W - label.length - 3)}╮${RST}`;
+    const RULER = `${R}├${'─'.repeat(W)}┤${RST}`;
 
-    // Border pieces
-    const TOP = `╭${'─'.repeat(23)} ${label} ${'─'.repeat(23)}╮`; // 1+23+1+11+1+23+1 = 61
-    const RULER = `├${'─'.repeat(W)}┤`;
-    const SIDE = '│';
-    const EMPTY = `${R}${SIDE}${RST}${' '.repeat(W)}${R}${SIDE}${RST}`;
-
-    // Helper: center text inside the box.
-    // text may contain ANSI codes; visible length is computed by stripping them.
-    const centerLine = (text: string) => {
-      const visible = text.replace(/\x1b\[[0-9;]*m/g, '');
-      const pad = W - visible.length;
-      const left = Math.floor(pad / 2);
-      const right = Math.ceil(pad / 2);
-      return `${R}${SIDE}${RST}${' '.repeat(left)}${text}${' '.repeat(right)}${R}${SIDE}${RST}`;
+    const pad = (text: string) => {
+      const vis = text.replace(/\x1b\[[0-9;]*m/g, '');
+      const p = W - vis.length;
+      const l = Math.floor(p / 2);
+      const r = Math.ceil(p / 2);
+      return `${R}│${RST}${' '.repeat(l)}${text}${' '.repeat(r)}${R}│${RST}`;
     };
+    const empty = `${R}│${RST}${' '.repeat(W)}${R}│${RST}`;
 
-    // ASCII art — pixel-art pig/creature (blocky, two eyes, little legs)
-    // Each line is centered independently so varying widths are fine
-    const artLines = [
-      '      ░░░░░░░░░',
-      '    ░░███████░░',
-      '   ░██ ◉   ◉ ██░',
-      '   ██   ▄▄▄   ██',
-      '   ██   ▀▀▀   ██',
-      '   ░██▄▄▄▄▄▄▄██░',
-      '    ░░███████░░',
-      '      ░███░░',
-      '     ▄▄███▄▄',
-      '   ▄▄█████████▄▄',
-      '  ███████████████',
-      '  █ ███████████ █',
-      '  █ ███████████ █',
-    ];
-    const art = artLines.map(line => centerLine(line)).join('\n');
+    // Clawd — authentic Claude Code block-pixel mascot
+    const mascot = [
+      '    ▄▄▄▄▄▄▄',
+      '   ▐▛███████▜▌',
+      '   ▐█ ▀   ▀ █▌',
+      '   ▐█  ───  █▌',
+      '   ▐▙███████▟▌',
+      '    ▀▀▀▀▀▀▀▀▀',
+    ].map(pad).join('\n');
 
-    // Build banner
-    const modelDisplay = ctx.model || 'Opus 4.7 (1M context)';
+    const model = ctx.model || 'auto · gemini → groq → grok';
+    const cwd = ctx.cwd.length > W - 2 ? '…' + ctx.cwd.slice(-(W - 3)) : ctx.cwd;
 
-    const lines = [
-      `${R}${TOP}${RST}`,
-      EMPTY,
-      centerLine(`${BOLD}Welcome back!${RST}`),
-      EMPTY,
-      art,
-      EMPTY,
-      centerLine(`${DIM}${modelDisplay}${RST}`),
-      centerLine(`${DIM}Claude Pro${RST}`),
-      centerLine(`${DIM}${ctx.cwd}${RST}`),
-      EMPTY,
-      `${R}${RULER}${RST}`,
-    ];
-
-    return lines.join('\n');
+    return [
+      TOP,
+      empty,
+      pad(`${BOLD}Agentic AI Terminal${RST}`),
+      empty,
+      mascot,
+      empty,
+      pad(`${DIM}${model}${RST}`),
+      pad(`${DIM}${cwd}${RST}`),
+      empty,
+      RULER,
+    ].join('\n');
   },
   prompt: '> ',
 };

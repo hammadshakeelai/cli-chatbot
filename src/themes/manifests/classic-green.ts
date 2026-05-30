@@ -45,12 +45,32 @@ export const classicGreenSkin: ThemeSkin = {
     light: { background: '#f0fff0', foreground: '#003300', cursor: '#003300', selectionBackground: '#bbffbb' },
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', monospace" },
-  banner: () => [
-    '\x1b[38;2;0;255;0m  ╦ ╦╔═╗╔╦╗╔═╗  ╦ ╦╦╔╗╔╦╔═╗',
-    '\x1b[38;2;0;200;0m  ║ ║╠═╣ ║║║╣   ║ ║║║║║║╔═╝',
-    '\x1b[38;2;0;150;0m  ╚═╝╩ ╩═╩╝╚═╝  ╚═╝╩╝╚╝╩╚═╝',
-    '\x1b[38;2;0;255;0m  ── VT100 phosphor terminal ──',
-  ].join('\n'),
-  prompt: '> ',
+  banner(ctx) {
+    const G  = '\x1b[38;2;0;255;0m';
+    const G2 = '\x1b[38;2;0;200;0m';
+    const G3 = '\x1b[38;2;0;150;0m';
+    const BOLD = '\x1b[1m';
+    const DIM = '\x1b[2m';
+    const RST = '\x1b[0m';
+    const host = 'vt100';
+    const user = 'user';
+
+    return [
+      '',
+      `${G}${BOLD}  DEC VT100  ·  1978${RST}`,
+      `${G3}  ─────────────────────────`,
+      `${G}  +────────────────────+`,
+      `${G2}  |  VT100 terminal    |`,
+      `${G2}  |  UNIX v7  ·  PDP11 |`,
+      `${G2}  |  ${DIM}${ctx.cwd?.slice(-14) || '/home/user'}${RST}${G2}  |`,
+      `${G3}  +────────────────────+`,
+      '',
+      `${DIM}  login: ${user}@${host}`,
+      `${DIM}  Last login: today`,
+      `${G3}  ─────────────────────────`,
+      `${DIM}  ${user}@${host}:~%${RST}`,
+    ].join('\r\n');
+  },
+  prompt: '\x1b[38;2;0;200;0muser@vt100\x1b[38;2;0;150;0m:~\x1b[0m% ',
   fx: { scanlines: true },
 };

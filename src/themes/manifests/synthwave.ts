@@ -23,12 +23,31 @@ export const synthwaveSkin: ThemeSkin = {
     light: { background: '#f5f0ff', foreground: '#1a0020', cursor: '#1a0020', selectionBackground: '#e0d0f0' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[38;2;255;0;255m  ╔═╗╦╔╗╔╦╔╗╔╔═╗╦ ╦╔═╗╦═╗',
-    '\x1b[38;2;255;0;128m  ║ ╦║║║║║║║║║╣ ║ ║║╣ ╠╦╝',
-    '\x1b[38;2;0;255;255m  ╚═╝╩╝╚╝╩╝╚╝╚═╝╚═╝╚═╝╩╚═',
-    '\x1b[38;2;255;0;255m  ── neon 80s  ──  \x1b[38;2;255;255;0m16k ──',
-  ].join('\n'),
-  prompt: '❯ ',
+  banner() {
+    const M = '\x1b[38;2;255;0;255m';    // magenta
+    const C = '\x1b[38;2;0;255;255m';    // cyan
+    const P = '\x1b[38;2;255;0;128m';    // pink
+    const BOLD = '\x1b[1m';
+    const DIM = '\x1b[2m';
+    const RST = '\x1b[0m';
+
+    return [
+      '',
+      `${M}${BOLD}  ◈ SYNTHWAVE ◈${RST}`,
+      `${DIM}  ─────────────────────────`,
+      `${M}    \\    |    /`,
+      `${P}     \\   |   /`,
+      `${C}  ────[ ◈ ]────`,
+      `${P}     /   |   \\`,
+      `${M}    /    |    \\`,
+      '',
+      `${C}  ♪  neon frequencies`,
+      `${M}  ♫  80s AI channel`,
+      `${DIM}  baud  9600  ·  16k`,
+      `${DIM}  ─────────────────────────`,
+      `${DIM}  Tune in · /help${RST}`,
+    ].join('\r\n');
+  },
+  prompt: '\x1b[38;2;255;0;255m◈\x1b[0m ',
   fx: { glow: true },
 };

@@ -23,12 +23,32 @@ export const hackerSkin: ThemeSkin = {
     light: { background: '#e0ffe0', foreground: '#002200', cursor: '#002200', selectionBackground: '#aaffaa' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[38;2;0;255;0m  ╦╔═╗╔═╗╦═╗╦═╗╔═╗╦═╗',
-    '\x1b[38;2;51;255;51m  ║║ ║║ ║╠╦╝╠╦╝║╣ ╠╦╝',
-    '\x1b[38;2;102;255;102m  ╩╚═╝╚═╝╩╚═╩╚═╚═╝╩╚═',
-    '\x1b[38;2;0;255;0m  ── root@hacker:~# exploit ──',
-  ].join('\n'),
-  prompt: '# ',
+  banner(ctx) {
+    const G = '\x1b[38;2;0;255;0m';
+    const G2 = '\x1b[38;2;51;255;51m';
+    const G3 = '\x1b[38;2;102;255;102m';
+    const DIM = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const ip = '192.168.' + Math.floor(Math.random() * 255) + '.' + Math.floor(Math.random() * 255);
+
+    return [
+      '',
+      `${G}${BOLD}  // HACKER TERMINAL //${RST}`,
+      `${DIM}  ─────────────────────────`,
+      `${G2}      .-----------.`,
+      `${G2}     (  O       O  )`,
+      `${G3}      |   _____  |`,
+      `${G3}      |  |     | |`,
+      `${G2}       \`----------'`,
+      '',
+      `${G}  [+] Session started`,
+      `${G}  [+] IP: ${ip}`,
+      `${DIM}  [*] Target: ${ctx.cwd || '/root'}`,
+      `${DIM}  ─────────────────────────`,
+      `${DIM}  root@hacker:~# _${RST}`,
+    ].join('\r\n');
+  },
+  prompt: '\x1b[38;2;0;255;0mroot@hacker\x1b[38;2;51;255;51m:~\x1b[0m# ',
   fx: { glow: true, scanlines: true },
 };

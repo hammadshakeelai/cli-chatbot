@@ -89,12 +89,31 @@ export const cursorSkin: ThemeSkin = {
     },
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" },
-  banner: () => [
-    '\x1b[38;2;243;133;24m  ╔═╗╦ ╦╦╔═╗╦═╗╔═╗╦╔═╗  ',
-    '\x1b[38;2;243;133;24m  ║ ╦║ ║║║ ╦╠╦╝║ ║║╔═╝  ',
-    '\x1b[38;2;217;115;15m  ╚═╝╚═╝╩╚═╝╩╚═╚═╝╩╚═╝  ',
-    '\x1b[38;2;243;133;24m  ── AI-native editor ──    ',
-  ].join('\n'),
+  banner(ctx) {
+    const A = '\x1b[38;2;243;133;24m';   // amber
+    const D = '\x1b[38;2;217;115;15m';   // dark amber
+    const DIM = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const model = ctx.model || 'claude-3.5-sonnet';
+    const cwd = ctx.cwd || '~/project';
+
+    return [
+      '',
+      `${A}${BOLD}  ❯ Cursor${RST}`,
+      `${D}  ─────────────────────────`,
+      `${A}  ┌─────────────────────┐`,
+      `${A}  │  ${DIM}${cwd.slice(-17).padEnd(17)}${RST}${A}  │`,
+      `${A}  │  ${BOLD}❯ _${RST}${A}                  │`,
+      `${A}  │                     │`,
+      `${D}  └─────────────────────┘`,
+      '',
+      `${DIM}  model  ${model}`,
+      `${DIM}  context  full codebase`,
+      `${D}  ─────────────────────────`,
+      `${DIM}  Ask, edit, or run · /help${RST}`,
+    ].join('\r\n');
+  },
   prompt: '\x1b[38;2;243;133;24m❯\x1b[0m ',
   fx: { scanlines: false, glow: false, flicker: false, curvature: false },
 };

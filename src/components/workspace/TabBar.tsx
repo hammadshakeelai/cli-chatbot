@@ -1,221 +1,340 @@
 'use client';
 
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useMirageStore, type SessionType } from '@/store';
 import { ALL_SKIN_META } from '@/themes/skin-meta';
 
-const MODEL_PRESETS_LIST = [
-  { id: 'opus-4.7', label: 'Opus 4.7', desc: 'High-intelligence reasoning', icon: '🧠', color: '#8957e5' },
-  { id: 'sonnet-4.7', label: 'Sonnet 4.7', desc: 'Balanced speed & quality', icon: '⚡', color: '#f38518' },
-  { id: 'haiku-4.7', label: 'Haiku 4.7', desc: 'Fast & lightweight', icon: '🌱', color: '#00d4aa' },
-  { id: 'claude-code-opus-4.8', label: 'Claude Code Opus 4.8', desc: 'Agentic coding expert', icon: '🤖', color: '#e5484d' },
-  { id: 'kiros-4.8', label: 'Kiros 4.8', desc: 'Next-gen AI core', icon: '🌀', color: '#ff6b35' },
+// ── Profile definitions for the new-tab dropdown ──────────────────────────────
+
+interface Profile {
+  id: string;
+  label: string;
+  sublabel: string;
+  icon: string;
+  color: string;
+  type: SessionType;
+  skinId?: string;
+}
+
+const SHELL_PROFILES: Profile[] = [
+  { id: 'shell',     label: 'Shell',          sublabel: 'Default terminal',       icon: '>_',  color: '#00d4aa', type: 'terminal' },
+  { id: 'powershell',label: 'PowerShell',     sublabel: 'PS-style terminal',      icon: 'PS',  color: '#4a90e2', type: 'terminal' },
 ];
 
-export function TabBar() {
-  const sessionOrder = useMirageStore((s) => s.sessionOrder);
-  const activeSessionId = useMirageStore((s) => s.activeSessionId);
-  const switchSession = useMirageStore((s) => s.switchSession);
-  const createSession = useMirageStore((s) => s.createSession);
-  const closeSession = useMirageStore((s) => s.closeSession);
-  const renameSession = useMirageStore((s) => s.renameSession);
+const AI_PROFILES: Profile[] = ALL_SKIN_META
+  .filter((s) => s.id !== 'mythos')
+  .map((s) => ({
+    id:       s.id,
+    label:    s.label,
+    sublabel: s.description,
+    icon:     s.id === 'claude-code'  ? 'CC'
+            : s.id === 'copilot'      ? 'GH'
+            : s.id === 'cursor'       ? '❯'
+            : s.id === 'windsurf'     ? '🌊'
+            : s.id === 'opencode'     ? '<>'
+            : s.id === 'hacker'       ? '#'
+            : s.id === 'matrix'       ? '01'
+            : s.id === 'dos'          ? 'C:'
+            : s.id === 'dracula'      ? '✦'
+            : s.id === 'synthwave'    ? '◈'
+            : s.id === 'amber-crt'    ? '>_'
+            : s.id === 'classic-green'? '$'
+            : s.id === 'high-contrast'? 'A+'
+            : s.id === 'openclaw'     ? '❯'
+            : '◆',
+    color:    s.accent,
+    type:     'chat' as SessionType,
+    skinId:   s.id,
+  }));
 
-  const reorderSessions = useMirageStore((s) => s.reorderSessions);
+const SPECIAL_PROFILES: Profile[] = [
+  { id: 'mythos', label: 'Mythos OS', sublabel: 'Cyber-security rig · Phase Crab', icon: '☠', color: '#cc2233', type: 'mythos', skinId: 'mythos' },
+];
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [newTabOpen, setNewTabOpen] = useState(false);
-  const [showModels, setShowModels] = useState(false);
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const newTabRef = useRef<HTMLDivElement>(null);
+// ── Tab icon / color helpers ──────────────────────────────────────────────────
 
-  // All skins except mythos (mythos is its own tab type)
-  const allSkins = ALL_SKIN_META.filter((s) => s.id !== 'mythos');
+function getTabAccent(type: SessionType, tabSkin: string | null): string {
+  if (type === 'mythos') return '#cc2233';
+  if (type === 'chat' && tabSkin) {
+    return ALL_SKIN_META.find((s) => s.id === tabSkin)?.accent ?? '#58a6ff';
+  }
+  return '#00d4aa';
+}
 
-  // AI Chat skin options — curated set of visually distinct skins
-  const chatSkins = allSkins.filter((s) =>
-    ['claude-code', 'openclaw', 'opencode', 'cursor', 'copilot', 'windsurf', 'classic-green', 'matrix', 'dracula', 'amber-crt', 'synthwave', 'dos', 'hacker', 'high-contrast'].includes(s.id)
+function getTabIcon(type: SessionType, tabSkin: string | null): string {
+  if (type === 'mythos') return '☠';
+  if (type === 'terminal') return '>_';
+  if (type === 'chat') {
+    const p = AI_PROFILES.find((p) => p.skinId === tabSkin);
+    return p?.icon ?? '◆';
+  }
+  return '◆';
+}
+
+// ── ProfileItem helper component ─────────────────────────────────────────────
+
+function ProfileItem({ profile, onClick }: { profile: Profile; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display:         'flex',
+        alignItems:      'center',
+        gap:             '10px',
+        width:           '100%',
+        padding:         '7px 12px',
+        background:      hovered ? 'rgba(255,255,255,0.07)' : 'transparent',
+        border:          'none',
+        borderRadius:    '5px',
+        cursor:          'pointer',
+        textAlign:       'left',
+        transition:      'background 0.12s',
+        color:           'inherit',
+      }}
+    >
+      {/* Icon badge */}
+      <span
+        style={{
+          display:        'inline-flex',
+          alignItems:     'center',
+          justifyContent: 'center',
+          width:          '28px',
+          height:         '28px',
+          borderRadius:   '6px',
+          backgroundColor: profile.color + '22',
+          border:         `1px solid ${profile.color}44`,
+          color:          profile.color,
+          fontSize:       '11px',
+          fontWeight:     700,
+          fontFamily:     'monospace',
+          flexShrink:     0,
+          letterSpacing:  '-0.5px',
+        }}
+      >
+        {profile.icon}
+      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+        <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--fg)', whiteSpace: 'nowrap' }}>
+          {profile.label}
+        </span>
+        <span style={{ fontSize: '11px', color: 'var(--fg-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {profile.sublabel}
+        </span>
+      </div>
+    </button>
   );
+}
 
-  // Close dropdown on outside click
+// ── Main TabBar ────────────────────────────────────────────────────────────────
+
+export function TabBar() {
+  const sessionOrder    = useMirageStore((s) => s.sessionOrder);
+  const sessions        = useMirageStore((s) => s.sessions);
+  const activeSessionId = useMirageStore((s) => s.activeSessionId);
+  const switchSession   = useMirageStore((s) => s.switchSession);
+  const createSession   = useMirageStore((s) => s.createSession);
+  const closeSession    = useMirageStore((s) => s.closeSession);
+  const renameSession   = useMirageStore((s) => s.renameSession);
+
+  const [dropdownOpen, setDropdownOpen]   = useState(false);
+  const [editingId,    setEditingId]      = useState<string | null>(null);
+  const [editValue,    setEditValue]      = useState('');
+  const [hoveredId,    setHoveredId]      = useState<string | null>(null);
+  const dropdownRef   = useRef<HTMLDivElement>(null);
+  const inputRef      = useRef<HTMLInputElement>(null);
+
+  // Close dropdown when clicking outside
   useEffect(() => {
-    if (!newTabOpen) return;
+    if (!dropdownOpen) return;
     const handler = (e: MouseEvent) => {
-      if (newTabRef.current && !newTabRef.current.contains(e.target as Node)) {
-        setNewTabOpen(false);
-        setShowModels(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [newTabOpen]);
+  }, [dropdownOpen]);
 
-  // Close dropdown on Escape
+  // Escape closes dropdown
   useEffect(() => {
-    if (!newTabOpen) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (showModels) {
-          setShowModels(false);
-        } else {
-          setNewTabOpen(false);
-        }
-      }
-    };
+    if (!dropdownOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setDropdownOpen(false); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [newTabOpen, showModels]);
+  }, [dropdownOpen]);
 
-  const handleCreateTab = useCallback((type: SessionType, skinId?: string, modelPreset?: string) => {
-    setNewTabOpen(false);
-    setShowModels(false);
-    createSession(type, skinId, modelPreset);
+  const openProfile = useCallback((profile: Profile) => {
+    setDropdownOpen(false);
+    createSession(profile.type, profile.skinId);
   }, [createSession]);
 
-  const handleDoubleClick = useCallback((id: string, label: string) => {
+  const startRename = useCallback((id: string, label: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setEditingId(id);
     setEditValue(label);
-    setTimeout(() => inputRef.current?.select(), 0);
+    setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 10);
   }, []);
 
-  const handleRename = useCallback((id: string) => {
-    const trimmed = editValue.trim();
-    if (trimmed) renameSession(id, trimmed);
+  const commitRename = useCallback((id: string) => {
+    const v = editValue.trim();
+    if (v) renameSession(id, v);
     setEditingId(null);
   }, [editValue, renameSession]);
 
-  const handleNewTabClick = useCallback(() => {
-    setNewTabOpen((v) => !v);
-    setShowModels(false);
-  }, []);
-
   return (
     <div
-      className="flex items-center border-b px-1 text-sm overflow-x-auto"
       style={{
+        display:         'flex',
+        alignItems:      'stretch',
         backgroundColor: 'var(--bg-elev)',
-        borderColor: 'var(--fg-dim)',
-        fontFamily: 'var(--font-ui)',
-        minHeight: '36px',
-        gap: '2px',
-        scrollbarWidth: 'thin',
+        borderBottom:    '1px solid var(--border)',
+        height:          '40px',
+        flexShrink:      0,
+        overflowX:       'auto',
+        overflowY:       'hidden',
+        scrollbarWidth:  'none',
+        userSelect:      'none',
+        fontFamily:      'var(--font-ui, system-ui, sans-serif)',
         WebkitOverflowScrolling: 'touch',
       }}
     >
-      {sessionOrder.map((meta, idx) => {
+      {/* ── Tabs ─────────────────────────────────────────────────── */}
+      {sessionOrder.map((meta) => {
+        const session  = sessions[meta.id];
+        const type     = session?.type ?? 'terminal';
+        const tabSkin  = session?.tabSkin ?? null;
         const isActive = meta.id === activeSessionId;
         const isEditing = editingId === meta.id;
-        const isDragOver = dragOverIdx === idx;
-
-        const handleDragStart = (e: React.DragEvent) => {
-          e.dataTransfer.setData('text/plain', String(idx));
-          e.dataTransfer.effectAllowed = 'move';
-          const el = e.currentTarget as HTMLElement;
-          el.style.opacity = '0.4';
-          el.style.cursor = 'grabbing';
-        };
-
-        const handleDragEnd = (e: React.DragEvent) => {
-          const el = e.currentTarget as HTMLElement;
-          el.style.opacity = '1';
-          el.style.cursor = 'grab';
-          setDragOverIdx(null);
-        };
-
-        const handleDragOver = (e: React.DragEvent) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          // Only update if different to avoid unnecessary renders
-          setDragOverIdx((prev) => (prev === idx ? prev : idx));
-        };
-
-        const handleDragLeave = (e: React.DragEvent) => {
-          // Only clear if we actually left this tab (not just entered a child)
-          const related = e.relatedTarget as Node | null;
-          if (!e.currentTarget.contains(related)) {
-            setDragOverIdx((prev) => (prev === idx ? null : prev));
-          }
-        };
-
-        const handleDrop = (e: React.DragEvent) => {
-          e.preventDefault();
-          const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-          if (!isNaN(fromIdx) && fromIdx !== idx) {
-            reorderSessions(fromIdx, idx);
-          }
-          setDragOverIdx(null);
-        };
+        const isHovered = hoveredId === meta.id;
+        const accent   = getTabAccent(type, tabSkin);
+        const icon     = getTabIcon(type, tabSkin);
 
         return (
           <div
             key={meta.id}
-            draggable={!isEditing}
-            onClick={() => { if (!isActive && !isEditing) switchSession(meta.id); }}
-            onDoubleClick={() => handleDoubleClick(meta.id, meta.label)}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onMouseEnter={() => setHoveredId(meta.id)}
+            onMouseLeave={() => setHoveredId(null)}
+            onClick={() => { if (!isEditing) switchSession(meta.id); }}
+            onDoubleClick={(e) => startRename(meta.id, meta.label, e)}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '4px 12px',
-              cursor: 'grab',
-              backgroundColor: isActive ? 'var(--bg)' : 'transparent',
-              color: isActive ? 'var(--fg)' : 'var(--fg-dim)',
-              userSelect: 'none',
-              whiteSpace: 'nowrap',
-              borderRadius: '4px 4px 0 0',
-              marginTop: '4px',
-              transition: 'background-color 0.15s, color 0.15s, border-color 0.1s',
-              borderLeft: isDragOver ? '2px solid var(--accent)' : '2px solid transparent',
-              opacity: isDragOver ? 0.85 : 1,
-              paddingLeft: isDragOver ? '10px' : '12px',
+              position:        'relative',
+              display:         'flex',
+              alignItems:      'center',
+              gap:             '6px',
+              padding:         '0 10px 0 12px',
+              cursor:          'default',
+              flexShrink:      0,
+              maxWidth:        '180px',
+              minWidth:        '100px',
+              // Windows Terminal tab look: active tab connects to terminal below
+              backgroundColor: isActive
+                ? 'var(--bg)'
+                : isHovered
+                  ? 'rgba(255,255,255,0.04)'
+                  : 'transparent',
+              borderRight:     '1px solid var(--border)',
+              // Active tab gets accent top strip
+              borderTop:       isActive
+                ? `2px solid ${accent}`
+                : '2px solid transparent',
+              // Active tab covers the bottom border (connects to terminal)
+              marginBottom:    isActive ? '-1px' : '0',
+              zIndex:          isActive ? 2 : 1,
+              transition:      'background-color 0.1s, border-color 0.12s',
             }}
           >
+            {/* Tab icon */}
+            <span
+              style={{
+                fontSize:   '10px',
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                color:      isActive ? accent : 'var(--fg-dim)',
+                opacity:    isActive ? 1 : 0.6,
+                letterSpacing: '-0.5px',
+                flexShrink: 0,
+                transition: 'color 0.1s',
+              }}
+            >
+              {icon}
+            </span>
+
+            {/* Tab label (or rename input) */}
             {isEditing ? (
               <input
                 ref={inputRef}
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => handleRename(meta.id)}
+                onBlur={() => commitRename(meta.id)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRename(meta.id);
+                  if (e.key === 'Enter') commitRename(meta.id);
                   if (e.key === 'Escape') setEditingId(null);
+                  e.stopPropagation();
                 }}
-                style={{
-                  background: 'var(--bg)',
-                  color: 'var(--fg)',
-                  border: '1px solid var(--accent)',
-                  outline: 'none',
-                  fontSize: 'inherit',
-                  fontFamily: 'inherit',
-                  width: '100px',
-                }}
-                autoFocus
                 onClick={(e) => e.stopPropagation()}
+                style={{
+                  flex:        1,
+                  background:  'var(--bg)',
+                  color:       'var(--fg)',
+                  border:      '1px solid var(--accent)',
+                  borderRadius: '3px',
+                  outline:     'none',
+                  fontSize:    '12px',
+                  fontFamily:  'var(--font-ui)',
+                  padding:     '1px 4px',
+                  width:       '90px',
+                }}
               />
             ) : (
-              <span>{meta.label}</span>
+              <span
+                style={{
+                  flex:         1,
+                  fontSize:     '12px',
+                  fontWeight:   isActive ? 500 : 400,
+                  color:        isActive ? 'var(--fg)' : 'var(--fg-dim)',
+                  overflow:     'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace:   'nowrap',
+                  transition:   'color 0.1s',
+                }}
+              >
+                {meta.label}
+              </span>
             )}
-            {sessionOrder.length > 1 && !isEditing && (
+
+            {/* Close button — only visible on hover or if active */}
+            {!isEditing && (isHovered || isActive) && sessionOrder.length > 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); closeSession(meta.id); }}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--fg-dim)',
-                  cursor: 'pointer',
-                  padding: '0 2px',
-                  fontSize: '14px',
-                  lineHeight: 1,
-                  opacity: 0.6,
-                  transition: 'opacity 0.15s',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  width:          '16px',
+                  height:         '16px',
+                  borderRadius:   '3px',
+                  background:     'transparent',
+                  border:         'none',
+                  color:          'var(--fg-dim)',
+                  cursor:         'pointer',
+                  fontSize:       '13px',
+                  lineHeight:     1,
+                  flexShrink:     0,
+                  transition:     'background 0.1s, color 0.1s',
                 }}
-                aria-label={`Close ${meta.label}`}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,80,80,0.18)';
+                  (e.currentTarget as HTMLButtonElement).style.color = '#ff6b6b';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-dim)';
+                }}
+                title={`Close ${meta.label}`}
               >
                 ×
               </button>
@@ -224,271 +343,99 @@ export function TabBar() {
         );
       })}
 
-      {/* End drop zone — allows dropping after the last tab */}
-      {sessionOrder.length > 1 && (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            setDragOverIdx((prev) => (prev === sessionOrder.length ? prev : sessionOrder.length));
-          }}
-          onDragLeave={(e) => {
-            const related = e.relatedTarget as Node | null;
-            if (!e.currentTarget.contains(related)) {
-              setDragOverIdx((prev) => (prev === sessionOrder.length ? null : prev));
-            }
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-            if (!isNaN(fromIdx) && fromIdx !== sessionOrder.length) {
-              reorderSessions(fromIdx, sessionOrder.length);
-            }
-            setDragOverIdx(null);
-          }}
-          style={{
-            minWidth: dragOverIdx === sessionOrder.length ? '60px' : '12px',
-            height: '28px',
-            marginTop: '4px',
-            borderRadius: '4px',
-            transition: 'min-width 0.1s, background-color 0.1s',
-            backgroundColor: dragOverIdx === sessionOrder.length ? 'var(--accent-alpha, rgba(100,100,100,0.15))' : 'transparent',
-            borderLeft: dragOverIdx === sessionOrder.length ? '2px solid var(--accent)' : '2px solid transparent',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--fg-dim)',
-            fontSize: '11px',
-            opacity: dragOverIdx === sessionOrder.length ? 0.8 : 0,
-          }}
-        >
-          {dragOverIdx === sessionOrder.length && 'drop here'}
-        </div>
-      )}
-
-      <div ref={newTabRef} style={{ position: 'relative' }}>
+      {/* ── New tab button + dropdown ──────────────────────────── */}
+      <div ref={dropdownRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <button
-          onClick={handleNewTabClick}
+          onClick={() => setDropdownOpen((v) => !v)}
+          title="New tab"
           style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--fg-dim)',
-            cursor: 'pointer',
-            padding: '4px 10px',
-            fontSize: '18px',
-            lineHeight: 1,
-            opacity: newTabOpen ? 1 : 0.6,
-            transition: 'opacity 0.15s, transform 0.15s',
-            transform: newTabOpen ? 'rotate(45deg)' : 'rotate(0deg)',
+            display:        'flex',
+            alignItems:     'center',
+            gap:            '2px',
+            height:         '100%',
+            padding:        '0 10px',
+            background:     'transparent',
+            border:         'none',
+            borderRight:    '1px solid var(--border)',
+            color:          'var(--fg-dim)',
+            cursor:         'pointer',
+            fontSize:       '18px',
+            lineHeight:     1,
+            transition:     'background 0.1s, color 0.1s',
           }}
-          aria-label="New tab"
-          aria-expanded={newTabOpen}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--fg-dim)';
+          }}
         >
-          +
+          <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '-1px' }}>+</span>
+          <span style={{ fontSize: '9px', opacity: 0.6, marginTop: '2px' }}>▾</span>
         </button>
 
-        {newTabOpen && (
+        {/* ── Dropdown panel ───────────────────────────────────── */}
+        {dropdownOpen && (
           <div
             style={{
-              position: 'absolute',
-              top: '100%',
-              left: '0',
-              zIndex: 100,
-              minWidth: '300px',
+              position:        'absolute',
+              top:             'calc(100% + 4px)',
+              left:            '0',
+              zIndex:          1000,
+              width:           '280px',
               backgroundColor: 'var(--bg-elev)',
-              border: '1px solid var(--border)',
-              borderRadius: '10px',
-              padding: '6px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-              fontFamily: 'var(--font-ui)',
-              maxHeight: 'calc(100vh - 80px)',
-              overflowY: 'auto',
+              border:          '1px solid var(--border)',
+              borderRadius:    '10px',
+              boxShadow:       '0 12px 40px rgba(0,0,0,0.5)',
+              overflow:        'hidden',
+              fontFamily:      'var(--font-ui, system-ui)',
             }}
           >
-            {!showModels ? (
-              <>
-                {/* Section: Shell */}
-                <div style={{ padding: '4px 8px 2px', fontSize: '10px', opacity: 0.4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  SHELL
-                </div>
-                <div
-                  onClick={() => handleCreateTab('terminal')}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-alpha, rgba(100,100,100,0.12))')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    color: 'var(--fg)',
-                    transition: 'background-color 0.1s',
-                  }}
-                >
-                  <span style={{ fontSize: '18px', lineHeight: 1, opacity: 0.8 }}>💻</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600 }}>Shell Terminal</span>
-                    <span style={{ fontSize: '11px', opacity: 0.5 }}>Full command-line environment</span>
-                  </div>
-                </div>
+            {/* Header */}
+            <div style={{ padding: '12px 14px 8px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--fg-dim)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                New Tab
+              </span>
+            </div>
 
-                {/* Section: AI Chat */}
-                <div style={{ padding: '4px 8px 2px', fontSize: '10px', opacity: 0.4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>
-                  AI CHAT
-                </div>
-                {chatSkins.map((skin) => (
-                  <div
-                    key={skin.id}
-                    onClick={() => {
-                      // If the skin has model presets variant? No, just create with skin
-                      handleCreateTab('chat', skin.id);
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-alpha, rgba(100,100,100,0.12))')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '6px 10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      color: 'var(--fg)',
-                      transition: 'background-color 0.1s',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '4px',
-                        backgroundColor: skin.accent,
-                        flexShrink: 0,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
-                    />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{skin.label}</span>
-                      <span style={{ fontSize: '11px', opacity: 0.5 }}>{skin.description}</span>
-                    </div>
-                  </div>
-                ))}
+            <div style={{ padding: '6px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto', scrollbarWidth: 'thin' }}>
 
-                {/* Section: Model Presets */}
-                <div
-                  onClick={() => setShowModels(true)}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-alpha, rgba(100,100,100,0.12))')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '6px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    color: 'var(--fg)',
-                    transition: 'background-color 0.1s',
-                    marginTop: '4px',
-                  }}
-                >
-                  <span style={{ fontSize: '16px', lineHeight: 1, opacity: 0.7 }}>🎯</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500 }}>Model Presets</span>
-                    <span style={{ fontSize: '11px', opacity: 0.5 }}>Choose an AI model →</span>
-                  </div>
-                </div>
+              {/* Shell section */}
+              <div style={{ padding: '6px 8px 2px', fontSize: '10px', fontWeight: 700, color: 'var(--fg-dim)', textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.6 }}>
+                Shell
+              </div>
+              {SHELL_PROFILES.map((p) => (
+                <ProfileItem key={p.id} profile={p} onClick={() => openProfile(p)} />
+              ))}
 
-                {/* Section: Mythos OS */}
-                <div style={{ padding: '4px 8px 2px', fontSize: '10px', opacity: 0.4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px' }}>
-                  SPECIAL
-                </div>
-                <div
-                  onClick={() => {
-                    handleCreateTab('mythos', 'mythos', 'sonnet-4.7');
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(204, 34, 51, 0.15)';
-                    e.currentTarget.style.borderColor = 'rgba(204, 34, 51, 0.4)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.borderColor = 'transparent';
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '8px 10px',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    color: '#cc2233',
-                    transition: 'background-color 0.15s, border-color 0.15s',
-                    border: '1px solid transparent',
-                    marginTop: '2px',
-                  }}
-                >
-                  <span style={{ fontSize: '18px', lineHeight: 1 }}>☠️</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 700 }}>Mythos OS</span>
-                    <span style={{ fontSize: '11px', opacity: 0.6 }}>Cyber-security rig · Phase Crab · Red/black hacking terminal</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Model Presets View */}
-                <div
-                  onClick={() => setShowModels(false)}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-alpha, rgba(100,100,100,0.12))')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 8px',
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    color: 'var(--fg-dim)',
-                    fontSize: '12px',
-                    transition: 'background-color 0.1s',
-                    marginBottom: '4px',
-                  }}
-                >
-                  ← Back
-                </div>
-                <div style={{ padding: '0 8px 6px', fontSize: '11px', opacity: 0.5, fontWeight: 600 }}>
-                  Choose a model for your AI chat tab:
-                </div>
-                {MODEL_PRESETS_LIST.map((preset) => (
-                  <div
-                    key={preset.id}
-                    onClick={() => handleCreateTab('chat', 'opencode', preset.id)}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--accent-alpha, rgba(100,100,100,0.12))')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 10px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      color: 'var(--fg)',
-                      transition: 'background-color 0.1s',
-                    }}
-                  >
-                    <span style={{ fontSize: '16px', lineHeight: 1 }}>{preset.icon}</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600 }}>{preset.label}</span>
-                      <span style={{ fontSize: '11px', opacity: 0.5 }}>{preset.desc}</span>
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
+              <div style={{ height: '1px', background: 'var(--border)', margin: '6px 2px' }} />
+
+              {/* AI section */}
+              <div style={{ padding: '6px 8px 2px', fontSize: '10px', fontWeight: 700, color: 'var(--fg-dim)', textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.6 }}>
+                AI Agents
+              </div>
+              {AI_PROFILES.map((p) => (
+                <ProfileItem key={p.id} profile={p} onClick={() => openProfile(p)} />
+              ))}
+
+              <div style={{ height: '1px', background: 'var(--border)', margin: '6px 2px' }} />
+
+              {/* Special section */}
+              <div style={{ padding: '6px 8px 2px', fontSize: '10px', fontWeight: 700, color: 'var(--fg-dim)', textTransform: 'uppercase', letterSpacing: '0.8px', opacity: 0.6 }}>
+                Special
+              </div>
+              {SPECIAL_PROFILES.map((p) => (
+                <ProfileItem key={p.id} profile={p} onClick={() => openProfile(p)} />
+              ))}
+            </div>
           </div>
         )}
       </div>
+
+      {/* Spacer to push remaining space right */}
+      <div style={{ flex: 1 }} />
     </div>
   );
 }

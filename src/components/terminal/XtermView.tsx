@@ -111,11 +111,10 @@ export function XtermView() {
   const getPromptRef   = useRef<((type: SessionType) => string) | null>(null);
   useEffect(() => { runCommandRef.current = runCommand; }, [runCommand]);
 
-  const getPrompt = useCallback((type: SessionType) => {
-    if (type === 'mythos') return '\r\x1b[38;2;204;34;51mroot\x1b[38;2;136;68;68m@\x1b[38;2;204;34;51mmythos\x1b[0m:\x1b[38;2;51;170;68m~\x1b[0m# ';
-    if (type === 'chat')   return '\r\x1b[1;36m>\x1b[0m ';
+  const getPrompt = useCallback((_type: SessionType) => {
+    if (currentSkin.prompt) return '\r' + currentSkin.prompt;
     return '\r\x1b[1;32m$\x1b[0m ';
-  }, []);
+  }, [currentSkin]);
   useEffect(() => { getPromptRef.current = getPrompt; }, [getPrompt]);
 
   useEffect(() => {
@@ -298,12 +297,8 @@ export function XtermView() {
       term.writeln(currentSkin.banner({ model: currentSession.chat.model || 'sonnet-4.7', cwd: currentSession.cwd || '/root', mode }));
       term.writeln('');
     } else if (isChatTab) {
-      term.writeln([
-        '\x1b[1;36m╭──────────────────────────────╮\x1b[0m',
-        '\x1b[1;36m│       Mirage AI Chat          │\x1b[0m',
-        '\x1b[1;36m╰──────────────────────────────╯\x1b[0m',
-        '\x1b[2mType a message · /help for commands · Esc to interrupt\x1b[0m',
-      ].join('\r\n'));
+      term.writeln(currentSkin.banner({ model: currentSession.chat.model || 'auto', cwd: currentSession.cwd || '/home/user', mode }));
+      term.writeln('\x1b[2mType to chat · /help for commands · Esc to interrupt\x1b[0m');
       term.writeln('');
     } else {
       term.writeln(currentSkin.banner({ model: currentSession.chat.model || 'Opus 4.7 (1M context)', cwd: currentSession.cwd || '~/Documents/asciiart', mode }));

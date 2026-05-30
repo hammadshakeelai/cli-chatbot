@@ -23,12 +23,34 @@ export const matrixSkin: ThemeSkin = {
     light: { background: '#f0fff0', foreground: '#003311', cursor: '#003311', selectionBackground: '#bbffbb' },
   },
   fonts: { mono: "'JetBrains Mono', monospace" },
-  banner: () => [
-    '\x1b[38;2;0;255;65m  ╦ ╦╔═╗╦═╗╔╦╗╔═╗╦═╗',
-    '\x1b[38;2;0;200;50m  ║ ║╠═╣╠╦╝ ║║║╣ ╠╦╝',
-    '\x1b[38;2;0;138;34m  ╚═╝╩ ╩╩╚══╩╝╚═╝╩╚═',
-    '\x1b[38;2;0;255;65m  ── wake up, Neo ──',
-  ].join('\n'),
-  prompt: '> ',
+  banner() {
+    const G1 = '\x1b[38;2;0;255;65m';
+    const G2 = '\x1b[38;2;0;200;50m';
+    const G3 = '\x1b[38;2;0;138;34m';
+    const BOLD = '\x1b[1m';
+    const DIM = '\x1b[2m';
+    const RST = '\x1b[0m';
+
+    const rain = () => {
+      const chars = '01アイウエオカキクケコ';
+      return Array.from({ length: 20 }, () => chars[Math.floor(Math.random() * chars.length)]).join(' ');
+    };
+
+    return [
+      '',
+      `${G1}${BOLD}  THE MATRIX${RST}`,
+      `${G3}  ─────────────────────────`,
+      `${G1}  ${rain()}`,
+      `${G2}  ${rain()}`,
+      `${G3}  ${rain()}`,
+      '',
+      `${G1}  Wake up, Neo.`,
+      `${G2}  The Matrix has you...`,
+      `${DIM}  Follow the white rabbit.`,
+      `${G3}  ─────────────────────────`,
+      `${DIM}  Knock, knock.${RST}`,
+    ].join('\r\n');
+  },
+  prompt: '\x1b[38;2;0;255;65mNeo\x1b[38;2;0;138;34m@matrix\x1b[0m:~$ ',
   fx: { glow: true },
 };

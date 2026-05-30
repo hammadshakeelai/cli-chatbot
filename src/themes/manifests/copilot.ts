@@ -89,12 +89,32 @@ export const copilotSkin: ThemeSkin = {
     },
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace" },
-  banner: () => [
-    '\x1b[38;2;137;87;229m  ╔═╗╦ ╦╦╔╗╔╔═╗╦═╗╔═╗╦╔═╗  ',
-    '\x1b[38;2;163;113;247m  ║ ╦║ ║║║║║║╣ ╠╦╝║ ║║╔═╝  ',
-    '\x1b[38;2;130;80;223m  ╚═╝╚═╝╩╝╚╝╚═╝╩╚═╚═╝╩╚═╝  ',
-    '\x1b[38;2;137;87;229m  ── AI pair programmer ──    ',
-  ].join('\n'),
+  banner(ctx) {
+    const P = '\x1b[38;2;163;113;247m';  // purple
+    const B = '\x1b[38;2;137;87;229m';   // dark purple
+    const G = '\x1b[38;2;63;185;80m';    // green
+    const D = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const model = ctx.model || 'gpt-4o';
+
+    return [
+      '',
+      `${P}${BOLD}  ◆ GitHub Copilot${RST}`,
+      `${B}  ─────────────────────────`,
+      `${P}      .-------------.`,
+      `${P}     ( ◉         ◉ )`,
+      `${P}      |    ___    |`,
+      `${P}      |   /   \\   |`,
+      `${B}      \`-----------'`,
+      '',
+      `${G}  ✓ Workspace indexed`,
+      `${G}  ✓ Suggestions active`,
+      `${D}  model: ${model}`,
+      `${B}  ─────────────────────────`,
+      `${D}  Type to pair program · /help${RST}`,
+    ].join('\r\n');
+  },
   prompt: '\x1b[38;2;137;87;229m◆\x1b[0m ',
   fx: { scanlines: false, glow: false, flicker: false, curvature: false },
 };

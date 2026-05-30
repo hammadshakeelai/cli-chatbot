@@ -46,7 +46,29 @@ export const opencodeSkin: ThemeSkin = {
   },
   fonts: { mono: "'JetBrains Mono', 'Fira Code', monospace" },
   banner(ctx) {
-    return `\x1b[1;34mMirage\x1b[0m ${ctx.mode === 'dark' ? '🌙' : '☀️'}  \x1b[2m${ctx.cwd}\x1b[0m`;
+    const B  = '\x1b[38;2;88;166;255m';
+    const B2 = '\x1b[38;2;121;192;255m';
+    const DIM = '\x1b[2m';
+    const BOLD = '\x1b[1m';
+    const RST = '\x1b[0m';
+    const model = ctx.model || 'auto';
+    const cwd = ctx.cwd?.slice(-20) || '/home/user';
+
+    return [
+      '',
+      `${B}${BOLD}  ◇ opencode${RST}`,
+      `${DIM}  ─────────────────────────`,
+      `${B}  .───────────────────.`,
+      `${B2}  |  </>  code + AI   |`,
+      `${B2}  |  > _              |`,
+      `${B}  '───────────────────'`,
+      '',
+      `${DIM}  model  ${model}`,
+      `${DIM}  cwd    ${cwd}`,
+      `${DIM}  mode   agentic`,
+      `${DIM}  ─────────────────────────`,
+      `${DIM}  $ _${RST}`,
+    ].join('\r\n');
   },
-  prompt: '$ ',
+  prompt: '\x1b[38;2;88;166;255m$\x1b[0m ',
 };
