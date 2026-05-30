@@ -29,6 +29,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [persona, setPersona]       = useState('');
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [toast, setToast]           = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Focus trap
   useEffect(() => {
@@ -283,17 +284,26 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             <Btn onClick={() => exportSession('json')}>Export .json</Btn>
             <Btn onClick={() => exportSession('md')}  >Export .md</Btn>
             <Btn onClick={() => exportSession('txt')} >Export .txt</Btn>
-            <Btn
-              onClick={() => {
-                if (confirm('Clear all chat messages in this session?')) {
-                  setChatMessages([]);
-                  showToast('Chat cleared');
-                }
-              }}
-              danger
-            >
-              Clear chat
-            </Btn>
+            {confirmClear ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: '#e05555' }}>Sure?</span>
+                <Btn
+                  onClick={() => {
+                    setChatMessages([]);
+                    setConfirmClear(false);
+                    showToast('Chat cleared');
+                  }}
+                  danger
+                >
+                  Yes, clear
+                </Btn>
+                <Btn onClick={() => setConfirmClear(false)}>Cancel</Btn>
+              </div>
+            ) : (
+              <Btn onClick={() => setConfirmClear(true)} danger>
+                Clear chat
+              </Btn>
+            )}
           </div>
         </Section>
       </div>

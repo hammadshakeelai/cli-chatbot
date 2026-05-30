@@ -223,10 +223,12 @@ export class VFS {
   }
 
   private cloneNode(node: VFSNode): VFSNode {
-    return {
-      ...node,
-      children: node.children ? new Map(node.children) : undefined,
-    };
+    if (node.type === 'file') return { ...node };
+    const cloned: VFSNode = { ...node, children: new Map() };
+    for (const [key, child] of (node.children ?? [])) {
+      cloned.children!.set(key, this.cloneNode(child));
+    }
+    return cloned;
   }
 
   toJSON(): VFSNode {
