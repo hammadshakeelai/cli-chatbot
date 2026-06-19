@@ -1,62 +1,88 @@
-# Mirage 🖥️✨
-### *A terminal that isn't there.*
+# Mirage Terminal 🖥️
 
-Mirage is a **browser-based virtual Linux terminal + AI companion**. It looks and feels like a real shell — `ls`, `cd`, `apt install`, `figlet`, `cmatrix`, `hollywood`, `neofetch` all "work" — but everything runs in a sandboxed JavaScript kernel in your browser. No real OS, no real risk, pure vibe.
+### *A PowerShell that isn't there.*
 
-On top of the fake-but-convincing shell sits a **free-API-powered chatbot**, a **swappable UI skin system** (`/ui claude-code`, `/ui matrix`, `/ui amber-crt`, …), a **day/night toggle**, and a **multi-tab interface** where each tab is its own independent session.
-
-> Working name is **Mirage** — rename freely (it's a single constant). Other candidates: `GhostShell`, `Nebula`, `Phantom`.
-
----
-
-## What it does (at a glance)
-
-- 🐚 **Simulated Linux shell** — real-feeling commands, pipes, redirects, env vars, a virtual filesystem, command history, tab-completion.
-- 📦 **Fake package manager** — `apt install figlet` shows a real-looking download, then `figlet` actually works. (`figlet`, `cmatrix`, `hollywood`, `cowsay`, `lolcat`, `sl`, `neofetch`, `nyancat`, `toilet`, `fortune` … all bundled, gated behind "install" for the illusion.)
-- 🤖 **AI chatbot** — talk to a free LLM (Gemini / Groq / OpenRouter), streamed token-by-token. Unknown input falls through to the AI; `/chat` toggles a dedicated chat mode.
-- 🎨 **Swappable UI skins** — switch the entire look at runtime via `/ui <name>` **or** a GUI button. Ships with Claude Code, OpenCode, OpenClaw, Classic Green, Amber CRT, Matrix, Dracula, Synthwave, DOS/Win95, Hacker.
-- 🌗 **Day / Night** — global light/dark toggle (`/day`, `/night`, button, or system-preference aware).
-- 🗂️ **Multi-tab** — `Ctrl+T` new tab, each with its own shell state + chat context; shared filesystem.
-- 🖥️ **CRT FX** — optional scanlines, glow, flicker, curvature (respects `prefers-reduced-motion`).
-- 🚀 **Deployable** — ships to Vercel / Netlify / Cloudflare Pages for free; API keys stay server-side; optional bring-your-own-key.
-
----
-
-## Repo layout
+A simulated **Windows Terminal + PowerShell** in the browser — with convincing, terminal-native
+simulations of real **agentic AI CLIs** living inside it:
 
 ```
-mirage-terminal/
-├── README.md                  ← you are here
-├── AGENTS.md                  ← project memory for opencode (read first by the agent)
-└── docs/
-    ├── design-phase/          ← the "why": original request, reasoning, the build prompt
-    │   ├── 00-original-request.md
-    │   ├── 01-design-reasoning.md
-    │   └── OPENCODE-MASTER-PROMPT.md   ⭐ paste THIS into opencode
-    ├── spec/                  ← the "what": full specification
-    │   ├── 01-vision-and-scope.md
-    │   ├── 02-requirements-SRS.md
-    │   ├── 03-architecture.md
-    │   ├── 04-terminal-engine.md
-    │   ├── 05-ui-themes.md
-    │   ├── 06-ai-providers.md
-    │   ├── 07-deployment.md
-    │   └── 08-risks-and-mitigations.md
-    └── agile/                 ← the "how + when": backlog & sprints
-        ├── product-backlog.md
-        └── sprint-plan.md
+PS C:\Users\user> claude        ← Claude Code (welcome box, spinner, tool calls)
+PS C:\Users\user> antigravity   ← Google Antigravity (gradient ASCII, plan checklists)
+PS C:\Users\user> gemini        ← Gemini CLI (the big gradient wordmark)
+PS C:\Users\user> copilot       ← GitHub Copilot CLI
+PS C:\Users\user> opencode      ← opencode
+PS C:\Users\user> codex         ← OpenAI Codex CLI
+PS C:\Users\user> mythos        ← Mythos OS (cyber-security rig)
 ```
 
-## How to use this repo
+The shell, the filesystem, and the agents' tool activity are **theater** (sandboxed, in-memory,
+zero host access). The **AI replies are real** — streamed from free LLM providers
+(Gemini / Groq / OpenRouter) through a server-side proxy.
 
-1. Read `docs/design-phase/01-design-reasoning.md` to understand the decisions.
-2. Skim the `docs/spec/` files for the full picture.
-3. Open opencode in this folder and paste `docs/design-phase/OPENCODE-MASTER-PROMPT.md` (or run `/init` then point it at the docs). opencode will plan, then build, sprint by sprint.
-
-## Target stack (pinned in the spec)
-
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 · Zustand · xterm.js (+ addons) · figlet.js · serverless API routes for the LLM proxy · Vercel/Cloudflare deploy.
+Full specification: [`SPEC.md`](./SPEC.md).
 
 ---
 
-*Generated in the design phase. Everything here is documentation — no application code yet. The code gets written by opencode following `OPENCODE-MASTER-PROMPT.md`.*
+## Quick start
+
+```bash
+npm install
+cp .env.example .env.local     # then paste at least one free API key
+npm run dev                    # http://localhost:3000
+```
+
+> **The keys currently in `.env.local` are dummies.** Without a real key the agents boot fine
+> but replies fail with a guidance message. Get a free key from any of:
+> [Google AI Studio](https://aistudio.google.com/apikey) ·
+> [Groq](https://console.groq.com/keys) ·
+> [OpenRouter](https://openrouter.ai/keys) — or paste one at runtime in
+> **Settings (⚙) → Bring your own API key**.
+
+## What's inside
+
+- **Windows Terminal chrome** — tabs in the title bar, profile dropdown (⌄), rename/duplicate/
+  close-others context menu, working window buttons, status bar, command palette
+  (`Ctrl+Shift+P` / `Ctrl+K`), settings dialog, toasts, optional CRT effects, mobile key bar.
+- **PowerShell 5.1 feel** — authentic banner & errors, `PS C:\Users\user>` prompt, cmdlets +
+  aliases (`Get-ChildItem`/`dir`/`ls`, `cd`, `cat`, `tree /f`, `sls`, …), pipes `|`,
+  redirects `>` `>>`, `;`/`&&`, globs, `$env:VAR`, `$PSVersionTable`, tab-completion
+  (commands **and** paths, cycling), history (`↑↓`, `Ctrl+R`), full line editing.
+- **A real-feeling fake machine** — case-insensitive `C:\` filesystem with a seeded
+  `~\projects\demo-app` the agents "read" during tool calls; `winfetch`, `winget install`
+  (progress-bar theater), `ping`, `cmatrix`, `figlet`, `cowsay`, `lolcat`.
+- **Agent runtime** — banner → ghost-hint prompt → verb spinner with elapsed time → simulated
+  tool calls / plan checklists → **markdown-styled streamed reply** → footer. `/help`, `/clear`,
+  `/model`, `/status`, `/exit`, Esc interrupts, double-Ctrl+C exits.
+- **8 color schemes** (Campbell default) × dark/light, applied live to chrome + every terminal.
+
+## Commands
+
+| | |
+|---|---|
+| `npm run dev` | dev server |
+| `npm run build` / `start` | production |
+| `npm run typecheck` | strict TS |
+| `npm run test` | vitest unit tests |
+| `npm run test:e2e` | Playwright e2e (boots dev server) |
+| `npm run lint` | eslint |
+
+## Architecture (short version)
+
+```
+src/term     xterm sessions (one per tab, never rebuilt), line editor,
+             spinner, streaming markdown→ANSI printer
+src/shell    PowerShell engine: WinFS, parser, pipeline, ~40 commands
+src/agents   agent definitions + shared REPL runtime + tool-call theater
+src/ui       React chrome (titlebar/tabs/dialogs/palette/statusbar)
+src/store    zustand UI state (tabs, settings) — engine lives outside React
+src/providers + app/api   LLM proxy: Gemini → Groq → OpenRouter fallback
+```
+
+Sessions are imperative objects owned by a manager outside React — switching tabs or themes
+never recreates a terminal, so buffers, history, and running agents survive.
+
+## Safety
+
+No real OS access. No real files. Provider keys stay server-side (`.env.local`); an optional
+bring-your-own key is stored only in your browser and forwarded per-request. The security
+persona (`mythos`) gives defensive guidance only.

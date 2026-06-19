@@ -14,6 +14,7 @@ const csp = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
+  devIndicators: false,
   async headers() {
     return [
       {

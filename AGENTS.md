@@ -1,36 +1,68 @@
-# AGENTS.md — Mirage project memory
+# AGENTS.md — Mirage Terminal project memory
 
-> opencode reads this file automatically. It is the single source of truth for *how* to work in this repo.
+> Read this before changing code. `SPEC.md` is the full v2 specification; this file is the
+> working contract. (v1 — the Linux-style "Mirage" with skin-personas and a popup AI panel —
+> was replaced wholesale in June 2026.)
 
-## Project
-**Mirage** — a browser-based virtual Linux terminal + AI companion. A sandboxed JS shell that *feels* real (commands, fake `apt`, figlet/cmatrix/hollywood), with a free-API chatbot, runtime-swappable UI skins, day/night mode, and multi-tab sessions. Must be deployable for free.
+## What this is
 
-Full spec lives in `docs/spec/`. Design reasoning in `docs/design-phase/`. Plan & sprints in `docs/agile/`. **Read those before writing code.**
+A simulated **Windows Terminal + PowerShell** in the browser. Inside the shell, users launch
+simulated **agentic AI CLIs** (`claude`, `antigravity`, `gemini`, `copilot`, `opencode`,
+`codex`, `mythos`). Shell, filesystem, and tool calls are theater; AI replies are real
+(Gemini → Groq → OpenRouter via `/api/chat`, keys server-side, BYOK optional).
 
-## Tech stack (do not substitute without a note in docs)
-- **Framework:** Next.js 15 (App Router) + React 19 + TypeScript (strict).
-- **Styling:** Tailwind CSS v4 + CSS custom properties for theming. No CSS-in-JS runtime.
-- **State:** Zustand (one root store, sliced per concern). No Redux.
-- **Terminal:** xterm.js + `@xterm/addon-fit`, `@xterm/addon-web-links`, `@xterm/addon-search`, `@xterm/addon-webgl`. React owns the "chrome" (tabs, header, status bar, skins); xterm owns the buffer.
-- **AI proxy:** Next.js Route Handlers (`app/api/chat/route.ts`) streaming via `ReadableStream`/SSE. Provider keys are **server-only env vars**.
-- **Persistence:** `localStorage` for settings; IndexedDB (`idb-keyval`) for VFS/history/installed packages.
-- **Apps/libs:** `figlet`, custom JS for cmatrix/hollywood/cowsay/lolcat/sl/neofetch, `shell-quote` for tokenizing.
-- **Testing:** Vitest (unit: shell parser, VFS, providers) + Playwright (e2e: tabs, theme switch, chat stream).
-- **Deploy:** Vercel primary (Cloudflare Pages / Netlify alternates). Upstash Redis or platform KV for IP rate limiting.
+## Architecture invariants
 
-## Working conventions
-- **Plan before Build.** Use Plan mode to produce a step list per sprint, get it reviewed, then implement.
-- **Work sprint by sprint** per `docs/agile/sprint-plan.md`. Do not jump ahead to later-sprint features.
-- **Each command/app/provider/theme is a self-contained module** with a clear interface (see specs). Adding one must not require editing a giant switch — use registries.
-- **Never hardcode or expose API keys.** Client never sees a provider key. BYO-key, if used, is forwarded through the proxy and never logged.
-- **Accessibility & reduced-motion are not optional** — gate all FX behind `prefers-reduced-motion`.
-- **Mobile must work** (the reference screenshots are mobile). Provide an on-screen key bar.
-- **Keep modules small.** If a file exceeds ~300 lines, split it.
-- **Commit per logical unit** with conventional-commit messages (`feat:`, `fix:`, `docs:`, `chore:`). Tag the sprint in the body.
-- **Update the docs** when you make a design decision that deviates from the spec — add a dated note, don't silently diverge.
+1. **Engine lives outside React.** `src/term/manager.ts` owns `Session` objects (one per tab:
+   xterm instance + REPL stack). React (`src/ui/*`) only renders chrome and tells the manager
+   what changed. **Never** recreate a terminal on theme/tab/setting changes — update
+   `term.options` in place (`Session.applySettings`).
+2. **REPL stack.** Every session boots a `ShellRepl` (PowerShell). Agents are `Repl`s pushed on
+   top (`createAgentRepl` in `src/agents/runner.ts`); `/exit` pops back to the shell. The
+   `Repl` interface lives in `src/term/types.ts`.
+3. **One shared `WinFS`** across tabs (like a real machine); per-tab cwd/history/chat context.
+   Filesystem is in-memory, case-insensitive, seeded in `src/shell/winfs.ts` — agents'
+   simulated tool calls reference those seeded paths (`THEATER_FILES`), keep them in sync.
+4. **The printer owns styling.** Personas instruct models to emit plain markdown; the streaming
+   markdown→ANSI renderer (`src/term/streamPrinter.ts`) does bold/code/headings/bullets/fences/
+   word-wrap. Don't let models emit ANSI.
+5. **Adding an agent** = one `AgentDef` in `src/agents/defs.ts` (+ `AGENT_DEFS` array). It
+   automatically becomes a shell command, a dropdown profile, a palette entry, and an
+   `agents`-list row. Use the `box()` / `gradientArt()` helpers from `banners.ts` for banners —
+   never hand-pad box borders. Big ASCII art is generated into `src/agents/ascii.ts` by
+   `scripts/gen-ascii.cjs` (figlet) — regenerate, don't hand-edit.
+6. **Adding a shell command** = a `ShellCommand` in `src/shell/commands/*` registered in
+   `ShellRepl.registerAll`. Long-running/animated commands: mark `interactive: true`, write via
+   `ctx.io`, honor `ctx.signal` + `ctx.sleep`.
+7. **Keys never reach the client.** `/api/chat` reads env keys; BYOK is forwarded per-request,
+   stored only in localStorage, never logged.
+8. **Authenticity rules:** PowerShell errors use the 5.1 red block format. Window/UI mimics
+   Windows Terminal. Agents inherit the terminal's color scheme (only Mythos has its own scheme,
+   user-selectable). Keep agent output calm and minimal — like the real tools.
 
-## Definition of Done (every story)
-Builds with no TS errors · lint passes · unit tests for logic-heavy modules · works on desktop + mobile viewport · respects active theme + reduced-motion · no key leakage · doc updated if behavior changed.
+## Tech
 
-## Non-goals (v1)
-Real OS / WASM Linux (it's *simulated*) · user accounts / cloud sync · running untrusted real code · paid APIs as the default path.
+Next.js 15 (App Router) · React 19 · TS strict (`noUncheckedIndexedAccess`, no unused) ·
+Tailwind v4 (used lightly; chrome is semantic CSS in `globals.css`) · Zustand (UI state only) ·
+@xterm/xterm v6 + fit/web-links/webgl.
+
+## Quality gates (all must pass)
+
+```bash
+npm run typecheck && npm run test && npm run lint && npm run build
+npx playwright test        # e2e — uses the window.__mirage dev hook
+```
+
+Visual checks: `node scripts/shots.cjs` (needs `npm run dev` running) writes screenshots
+to `shots/`.
+
+## Known footguns
+
+- `.env.local` ships with dummy keys → agents show the key-guidance error until a real free
+  key is added (or pasted in Settings → BYOK).
+- Browser-reserved shortcuts (Ctrl+T/W, Ctrl+Tab) can't be intercepted — tab shortcuts are
+  Alt+T / Alt+W / Alt+1…8.
+- `public/sw.js` is intentionally a self-destructing service worker (v1's cache served stale
+  builds). Don't reintroduce precaching without cache-busting.
+- xterm pending-wrap: the line editor resolves exact-multiple-of-cols rendering with a
+  `' \b'` trick (`lineEditor.ts`) — keep it when touching redraw logic.

@@ -1,69 +1,98 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useEffect } from 'react';
-import { useMirageStore } from '@/store';
-import { TabBar }         from '@/components/workspace/TabBar';
-import { AiPanel }        from '@/components/workspace/AiPanel';
-import { CommandPalette } from '@/components/workspace/CommandPalette';
-
-// Lazy-load xterm.js (browser-only)
-const XtermView = dynamic(
-  () => import('@/components/terminal/XtermView').then((m) => m.XtermView),
-  { ssr: false, loading: () => null },
-);
+import { useUI } from '@/store/ui';
+import { SHELL_PROFILE } from '@/agents/profiles';
+import { WindowChrome } from '@/ui/WindowChrome';
+import { TerminalMount } from '@/ui/TerminalMount';
+import { StatusBar } from '@/ui/StatusBar';
+import { SettingsDialog } from '@/ui/SettingsDialog';
+import { CommandPalette } from '@/ui/CommandPalette';
+import { ConfirmCloseDialog, AboutDialog } from '@/ui/Dialogs';
+import { MobileKeyBar } from '@/ui/MobileKeyBar';
+import { Toasts } from '@/ui/Toasts';
+import { CrtOverlay } from '@/ui/CrtOverlay';
 
 export default function Home() {
-  const setSkin        = useMirageStore((s) => s.setSkin);
-  const aiPanelVisible = useMirageStore((s) => s.aiPanelVisible);
+  const tabs = useUI((s) => s.tabs);
+  const addTab = useUI((s) => s.addTab);
 
+  // Always keep at least one tab (also restores after "close all tabs")
   useEffect(() => {
-    // Register PWA service worker
+    if (tabs.length === 0) addTab(SHELL_PROFILE);
+  }, [tabs.length, addTab]);
+
+  // Remove any stale service workers from the previous version of the app.
+  useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => regs.forEach((r) => { r.unregister().catch(() => {}); }))
+        .catch(() => {});
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((k) => { caches.delete(k).catch(() => {}); })).catch(() => {});
+      }
     }
-    // Restore persisted skin preference
-    const stored = localStorage.getItem('mirage-skin');
-    if (stored && stored !== 'claude-code') {
-      setSkin(stored).catch(() => {});
-    }
-  }, [setSkin]);
+  }, []);
+
+  // Global shortcuts (capture phase so the terminal doesn't swallow them)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const ui = useUI.getState();
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      if ((ctrl && e.shiftKey && e.key.toLowerCase() === 'p') || (ctrl && !e.shiftKey && e.key.toLowerCase() === 'k')) {
+        e.preventDefault();
+        e.stopPropagation();
+        ui.setPaletteOpen(!ui.paletteOpen);
+        return;
+      }
+      if (ctrl && e.key === ',') {
+        e.preventDefault();
+        e.stopPropagation();
+        ui.setSettingsOpen(!ui.settingsOpen);
+        return;
+      }
+      if (e.altKey && !ctrl) {
+        const k = e.key.toLowerCase();
+        if (k === 't') {
+          e.preventDefault(); e.stopPropagation();
+          ui.addTab(SHELL_PROFILE);
+          return;
+        }
+        if (k === 'w') {
+          e.preventDefault(); e.stopPropagation();
+          ui.closeTab(ui.activeTabId);
+          return;
+        }
+        if (/^[1-8]$/.test(k)) {
+          const idx = Number(k) - 1;
+          const tab = ui.tabs[idx];
+          if (tab) {
+            e.preventDefault(); e.stopPropagation();
+            ui.activateTab(tab.id);
+          }
+          return;
+        }
+        if (k === 'arrowright') { e.preventDefault(); e.stopPropagation(); ui.cycleTab(1); return; }
+        if (k === 'arrowleft') { e.preventDefault(); e.stopPropagation(); ui.cycleTab(-1); return; }
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, []);
 
   return (
-    <main
-      style={{
-        display:         'flex',
-        flexDirection:   'column',
-        height:          '100dvh',
-        width:           '100dvw',
-        overflow:        'hidden',
-        backgroundColor: 'var(--bg)',
-        // Padding-bottom when AI panel is open so terminal isn't obscured
-        paddingBottom:   aiPanelVisible ? '0' : '0',
-      }}
-    >
-      {/* Command palette (Ctrl+P) */}
+    <main className="app-frame">
+      <WindowChrome />
+      <TerminalMount />
+      <MobileKeyBar />
+      <StatusBar />
+      <SettingsDialog />
       <CommandPalette />
-
-      {/* Windows Terminal-style tab bar */}
-      <TabBar />
-
-      {/* Terminal content — fills remaining space */}
-      <div
-        style={{
-          flex:     1,
-          overflow: 'hidden',
-          display:  'flex',
-          flexDirection: 'column',
-          // When AI panel is visible, shrink terminal to make room
-          minHeight: 0,
-        }}
-      >
-        <XtermView />
-      </div>
-
-      {/* Agentic AI popup panel */}
-      <AiPanel />
+      <ConfirmCloseDialog />
+      <AboutDialog />
+      <Toasts />
+      <CrtOverlay />
     </main>
   );
 }

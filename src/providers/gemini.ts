@@ -7,7 +7,7 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const geminiProvider: Provider = {
   id: 'gemini',
   name: 'Google Gemini',
-  models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'],
+  models: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'],
 
   async *stream(
     messages: ChatMsg[],

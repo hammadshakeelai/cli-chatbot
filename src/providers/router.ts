@@ -21,23 +21,23 @@ export async function* routeStream(
   byokKey?: string,
   signal?: AbortSignal,
 ): AsyncGenerator<StreamDelta> {
-  // If model specifies a provider prefix (e.g. "groq:llama-3.3-70b"), use that
-  let chain: string[];
+  // A provider prefix (e.g. "groq:llama-3.3-70b") is a *preference*: that
+  // provider is tried first with the requested model, then the remaining
+  // providers are tried with their own default models — so one dead key or
+  // rate-limited provider never takes the whole app down.
+  let chain: string[] = DEFAULT_CHAIN;
+  let preferred: string | undefined;
   let modelOverride: string | undefined;
 
   if (opts.model?.includes(':')) {
     const [providerId, ...rest] = opts.model.split(':');
-    const modelName = rest.join(':');
-    chain = [providerId!];
-    modelOverride = modelName;
-  } else if (byokKey) {
-    // BYOK with default model: try all providers with the custom key, start with gemini
-    chain = DEFAULT_CHAIN;
-  } else {
-    chain = DEFAULT_CHAIN;
+    preferred = providerId!;
+    modelOverride = rest.join(':');
+    chain = [preferred, ...DEFAULT_CHAIN.filter((p) => p !== preferred)];
   }
 
   let lastError: string | undefined;
+  let attempts = 0;
 
   for (const providerId of chain) {
     const provider = getProvider(providerId);
@@ -46,9 +46,12 @@ export async function* routeStream(
       continue;
     }
 
-    const model = modelOverride ?? opts.model ?? provider.models[0];
+    // The override model only applies to the preferred provider; everyone
+    // else uses their own first-choice model.
+    const model = providerId === preferred && modelOverride
+      ? modelOverride
+      : (!opts.model || opts.model.includes(':') ? provider.models[0] : opts.model);
 
-    // If provider has no models configured, skip
     if (!provider.models.length) {
       lastError = `${providerId} has no available models`;
       continue;
@@ -59,13 +62,14 @@ export async function* routeStream(
       yield { type: 'meta', key: 'provider', value: provider.name } as MetaDelta;
       yield { type: 'meta', key: 'model', value: model } as MetaDelta;
 
-      if (chain.indexOf(providerId) > 0) {
+      if (attempts > 0) {
         yield {
           type: 'meta',
           key: 'switchedTo',
           value: `${provider.name} (${model})`,
         } as MetaDelta;
       }
+      attempts++;
 
       for await (const delta of provider.stream(messages, adjustedOpts, byokKey, signal)) {
         yield delta;
