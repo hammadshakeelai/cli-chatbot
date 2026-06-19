@@ -1,8 +1,9 @@
 import figlet from 'figlet';
 import standardFont from 'figlet/importable-fonts/Standard.js';
 import type { ShellCommand, ShellCtx } from '../types';
-import { sgr, RESET, fgHex } from '@/term/ansi';
+import { sgr, RESET, fgHex, gradientLines } from '@/term/ansi';
 import { APP_NAME, APP_VERSION, HOST_NAME, USER_NAME } from '@/lib/constants';
+import { MIRAGE_ART } from '@/agents/ascii';
 
 let figletReady = false;
 function ensureFiglet(): void {
@@ -202,4 +203,45 @@ export const cMatrix: ShellCommand = {
   },
 };
 
-export const FUN_COMMANDS: ShellCommand[] = [winFetch, figletCmd, cowSay, lolCat, cMatrix];
+export const mirageCmd: ShellCommand = {
+  name: 'mirage',
+  description: 'Print the Mirage Terminal banner',
+  usage: 'mirage [--banner | --version | --help]',
+  run(ctx: ShellCtx) {
+    const has = (long: string, short?: string) =>
+      ctx.args.some((a) => a.toLowerCase() === '--' + long) ||
+      ctx.flags.has(long) || (short ? ctx.flags.has(short) : false);
+
+    if (has('help', 'h')) {
+      ctx.out(
+        `\n  ${sgr.bold}${APP_NAME}${RESET} ${sgr.dim}— a PowerShell that isn't there${RESET}\n\n` +
+        `  Usage: mirage [option]\n` +
+        `    ${sgr.bold}--banner${RESET}     show the Mirage wordmark (default)\n` +
+        `    ${sgr.bold}--version${RESET}    print the version\n` +
+        `    ${sgr.bold}--help${RESET}       show this help\n\n`,
+      );
+      return 0;
+    }
+
+    if (has('version', 'v')) {
+      ctx.out(`${APP_NAME} v${APP_VERSION}\n`);
+      return 0;
+    }
+
+    // default + --banner
+    const art = gradientLines(MIRAGE_ART, '#4cc2ff', '#c586ff');
+    const lines = [
+      '',
+      ...art.map((l) => '  ' + l),
+      '  ' + sgr.dim + `a PowerShell that isn't there · v${APP_VERSION}` + RESET,
+      '',
+      '  ' + sgr.dim + 'Type ' + RESET + 'agents' + sgr.dim + ' to meet the AI CLIs · ' +
+        RESET + 'help' + sgr.dim + ' for everything else.' + RESET,
+      '',
+    ];
+    ctx.out(lines.join('\n') + '\n');
+    return 0;
+  },
+};
+
+export const FUN_COMMANDS: ShellCommand[] = [winFetch, figletCmd, cowSay, lolCat, cMatrix, mirageCmd];
